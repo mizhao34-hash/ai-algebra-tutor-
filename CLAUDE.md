@@ -41,7 +41,7 @@ Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, aut
 
 ## Progress log
 - [x] Week 1: data preprocessing (ml/preprocess.py → data/processed/)
-- [ ] Week 2: BKT + DKT training and comparison
+- [x] Week 2: BKT + DKT training and comparison (test AUC: BKT 0.708, DKT 0.751)
 - [ ] Week 3: problem templates + SymPy grader
 - [ ] Week 4: backend API + model inference
 - [ ] Week 5: frontend
