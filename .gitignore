@@ -1,0 +1,15 @@
+# Data (raw data never committed)
+data/raw/
+
+# Secrets
+.env
+.env.*
+
+# OS / Python / Node
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+node_modules/
+.next/
