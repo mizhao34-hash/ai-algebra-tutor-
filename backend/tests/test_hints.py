@@ -167,3 +167,18 @@ def test_claude_refusal_or_truncation_is_a_failed_attempt(stop):
     client = FakeClient(SimpleNamespace(stop_reason=stop, parsed_output=None))
     with pytest.raises(HintLLMError):
         ClaudeHintLLM(client=client).propose(SOLVE, SOLVE.expression, [])
+
+
+def test_claude_400_is_a_config_error_not_retried():
+    import anthropic
+    import httpx
+
+    req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    err = anthropic.BadRequestError("credit balance is too low", response=httpx.Response(400, request=req), body=None)
+
+    class Raising(FakeClient):
+        def _parse(self, **kwargs):
+            raise err
+
+    with pytest.raises(HintConfigError, match="credit balance"):
+        ClaudeHintLLM(client=Raising(None)).propose(SOLVE, SOLVE.expression, [])

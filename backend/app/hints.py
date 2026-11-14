@@ -235,6 +235,11 @@ class ClaudeHintLLM:
             # The SDK raises TypeError("Could not resolve authentication method...")
             # when no credentials are configured at all. Not worth retrying.
             raise HintConfigError("No Claude API key configured; set ANTHROPIC_API_KEY in .env") from e
+        except anthropic.BadRequestError as e:
+            # 400s come from the request or the account (e.g. "credit balance is too low"),
+            # not from bad luck, so retrying can't help. Surface them instead of hiding
+            # them behind the fallback hint.
+            raise HintConfigError(f"Claude API rejected the request: {e.message}") from e
         except anthropic.APIConnectionError as e:
             raise HintLLMError(f"connection error: {e}") from e
         except anthropic.APIStatusError as e:  # rate limits, 5xx, bad requests
