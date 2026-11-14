@@ -45,6 +45,6 @@ Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, aut
 - [x] Week 3: problem templates + SymPy grader (backend/app: skills.py, problems.py, grader.py; 106 tests)
 - [x] Week 4: backend API + model inference (FastAPI + SQLite, DKT mastery, recommendation rule; run: .venv/bin/uvicorn backend.app.main:app)
 - [x] Week 5: frontend (Next.js 14 + Tailwind: /practice, /dashboard; run: cd frontend && npm run dev, with the backend on :8000)
-- [ ] Week 6: LLM hints + verification loop
+- [x] Week 6: LLM hints + verification loop (backend/app/hints.py: Claude structured output, SymPy check, 3 retries, fallback; needs ANTHROPIC_API_KEY in .env)
 - [ ] Week 7: experiments + deployment
 - [ ] Week 8: report + demo video

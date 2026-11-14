@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MasteryList } from "@/components/Mastery";
-import { api, type AttemptResult, type GradeStatus, type MasteryReport, type Problem } from "@/lib/api";
+import { api, type AttemptResult, type GradeStatus, type Hint, type MasteryReport, type Problem } from "@/lib/api";
 import { useUserId } from "@/lib/user";
 
 const PLACEHOLDER: Record<Problem["kind"], string> = {
@@ -30,6 +30,8 @@ export default function Practice() {
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [choice, setChoice] = useState(""); // "" means "let the tutor recommend"
+  const [hints, setHints] = useState<Hint[]>([]); // hints so far for this problem, oldest first
+  const [hintBusy, setHintBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +49,7 @@ export default function Practice() {
       setReport(m);
       setAnswer("");
       setResult(null);
+      setHints([]);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -75,9 +78,28 @@ export default function Practice() {
     }
   }
 
+  async function getHint() {
+    if (!userId || !problem) return;
+    // Each hint continues from the last step shown, so hints walk through the solution.
+    const lastStep = [...hints].reverse().find((h) => h.next_step)?.next_step;
+    setHintBusy(true);
+    setError(null);
+    try {
+      const h = await api.hint(userId, problem.id, lastStep);
+      setHints((prev) => [...prev, h]);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setHintBusy(false);
+    }
+  }
+
   if (!userId) return null;
   const solved = result?.correct ?? false;
   const isRecommended = !choice && problem && report && problem.skill === report.recommended;
+  // An LLM hint with no next_step means the next step IS the answer: no more hints.
+  const lastHint = hints[hints.length - 1];
+  const hintsDone = lastHint !== undefined && lastHint.source === "llm" && !lastHint.next_step;
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_18rem]">
@@ -166,15 +188,47 @@ export default function Practice() {
               </div>
             )}
 
+            {hints.length > 0 && (
+              <ol className="mt-4 space-y-2">
+                {hints.map((h, i) => (
+                  <li
+                    key={i}
+                    className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-950 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-100"
+                  >
+                    <span className="font-medium">Hint {i + 1}:</span> {h.hint}
+                    {h.next_step && <span className="mt-1 block font-mono text-base">→ {h.next_step}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
+
             {!solved && (
-              <button
-                type="button"
-                onClick={() => loadProblem(userId, choice)}
-                disabled={busy}
-                className="mt-4 text-sm text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
-              >
-                Skip to another problem
-              </button>
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                <button
+                  type="button"
+                  onClick={getHint}
+                  disabled={hintBusy || busy || hintsDone}
+                  className="rounded-md border border-violet-300 px-3 py-1.5 font-medium text-violet-800 hover:bg-violet-50 disabled:opacity-50 dark:border-violet-700 dark:text-violet-200 dark:hover:bg-violet-950"
+                >
+                  {hintBusy ? "Thinking…" : hints.length ? "Next hint" : "Get a hint"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadProblem(userId, choice)}
+                  disabled={busy}
+                  className="text-slate-500 underline hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+                >
+                  Skip to another problem
+                </button>
+              </div>
+            )}
+            {!solved && !result && hints.length === 0 && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Using a hint before your first answer means this problem won&apos;t count as solved on your own.
+              </p>
+            )}
+            {hintsDone && !solved && (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">That&apos;s the last hint: the next step is the answer.</p>
             )}
           </div>
         )}

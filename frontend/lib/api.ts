@@ -41,6 +41,13 @@ export type AttemptResult = {
   mastery: MasteryReport;
 };
 
+export type Hint = {
+  hint: string;
+  next_step: string; // "" when writing the step would reveal the answer
+  verified: boolean; // passed the SymPy check
+  source: "llm" | "fallback";
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -51,7 +58,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new Error(`Can't reach the tutor server at ${API_URL}. Is the backend running?`);
   }
-  if (!res.ok) throw new Error(`Server error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    // FastAPI errors look like {"detail": "..."}; show that text when present.
+    const text = await res.text();
+    let detail = text;
+    try {
+      detail = JSON.parse(text).detail ?? text;
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(res.status === 503 ? `Hints are unavailable: ${detail}` : `Server error ${res.status}: ${detail}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -68,5 +85,12 @@ export const api = {
     request<AttemptResult>(`${user(userId)}/attempts`, {
       method: "POST",
       body: JSON.stringify({ problem_id: problemId, answer }),
+    }),
+
+  // `current` = the step the student is on (defaults to the problem itself).
+  hint: (userId: string, problemId: string, current?: string) =>
+    request<Hint>(`${user(userId)}/hints`, {
+      method: "POST",
+      body: JSON.stringify({ problem_id: problemId, current: current ?? null }),
     }),
 };
