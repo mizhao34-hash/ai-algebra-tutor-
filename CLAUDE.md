@@ -43,7 +43,7 @@ Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, aut
 - [x] Week 1: data preprocessing (ml/preprocess.py → data/processed/)
 - [x] Week 2: BKT + DKT training and comparison (test AUC: BKT 0.708, DKT 0.751)
 - [x] Week 3: problem templates + SymPy grader (backend/app: skills.py, problems.py, grader.py; 106 tests)
-- [ ] Week 4: backend API + model inference
+- [x] Week 4: backend API + model inference (FastAPI + SQLite, DKT mastery, recommendation rule; run: .venv/bin/uvicorn backend.app.main:app)
 - [ ] Week 5: frontend
 - [ ] Week 6: LLM hints + verification loop
 - [ ] Week 7: experiments + deployment

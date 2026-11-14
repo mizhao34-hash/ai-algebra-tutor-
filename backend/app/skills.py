@@ -7,6 +7,13 @@ Each skill has:
     skill. DKT/BKT were trained on ASSISTments skills, so at inference time we
     read mastery for a tutor skill from these ids (averaged if several).
     The mapping is a hand-made approximation; see the report's limitations.
+
+Rule: only map to ASSISTments skills with >= 1000 training rows, so DKT has
+actually learned them (enforced by tests/test_skills.py). The closest-named
+skills failed this rule, so they were replaced by related, well-trained ones:
+    Algebraic Simplification (165, 84 rows) -> Order of Operations All (310)
+    Distributive Property    (340, 10 rows) -> Order of Operations with () (309)
+    Algebraic Solving        (166, 267 rows) -> dropped; multi_step uses 312 only
 """
 
 from dataclasses import dataclass
@@ -33,14 +40,14 @@ SKILLS: dict[str, Skill] = {
     s.id: s
     for s in [
         Skill("integer_ops", "Integer operations", (), (277, 279, 310)),
-        Skill("combine_like_terms", "Combining like terms", ("integer_ops",), (165,)),
-        Skill("distributive", "Distributive property", ("integer_ops",), (340,)),
+        Skill("combine_like_terms", "Combining like terms", ("integer_ops",), (310,)),
+        Skill("distributive", "Distributive property", ("integer_ops",), (309,)),
         Skill("one_step_add", "One-step equations (add/subtract)", ("integer_ops",), (311,)),
         Skill("one_step_mul", "One-step equations (multiply/divide)", ("integer_ops",), (311,)),
         Skill("two_step", "Two-step equations", ("one_step_add", "one_step_mul"), (311,)),
         Skill("vars_both_sides", "Variables on both sides", ("two_step", "combine_like_terms"), (312,)),
-        Skill("parentheses", "Equations with parentheses", ("two_step", "distributive"), (312, 340)),
-        Skill("multi_step", "Multi-step equations", ("vars_both_sides", "parentheses"), (312, 166)),
+        Skill("parentheses", "Equations with parentheses", ("two_step", "distributive"), (312, 309)),
+        Skill("multi_step", "Multi-step equations", ("vars_both_sides", "parentheses"), (312,)),
     ]
 }
 

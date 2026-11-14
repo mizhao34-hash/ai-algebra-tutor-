@@ -17,6 +17,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
+from ml.dkt_model import DKT  # model class lives in its own file so the backend can import it alone
 from ml.evaluation import log_result, metrics, target_mask
 
 DATA_DIR = Path("data/processed")
@@ -39,23 +40,6 @@ def set_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-
-
-class DKT(nn.Module):
-    def __init__(self, num_skills: int, embed_size: int, hidden_size: int, dropout: float):
-        super().__init__()
-        self.num_skills = num_skills
-        # Input token encodes both skill and correctness: id = skill + correct * K.
-        # So there are 2K possible tokens (an embedding instead of a 2K one-hot).
-        self.embed = nn.Embedding(2 * num_skills, embed_size)
-        self.lstm = nn.LSTM(embed_size, hidden_size, batch_first=True)
-        self.dropout = nn.Dropout(dropout)
-        self.out = nn.Linear(hidden_size, num_skills)
-
-    def forward(self, tokens):
-        h, _ = self.lstm(self.embed(tokens))
-        # Logits for every skill at every step: (batch, seq_len, K).
-        return self.out(self.dropout(h))
 
 
 def student_sequences(df: pd.DataFrame):
