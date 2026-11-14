@@ -7,8 +7,9 @@ This halves API cost and removes LLM sampling noise from the comparison.
 
 Test cases: problems sampled with a fixed seed, `--per-skill` per skill.
 Each problem is asked for a hint at its start; equation problems are also
-asked one step before the answer (current = "kx = k*answer"), where leaking
-the answer is most tempting.
+asked at their real last step "cx = d" (all x terms and numbers collected),
+where the only step left is the answer and leaking is most tempting. Problems
+whose last step is the start itself or already "x = ..." are skipped there.
 
 Each hint the student WOULD SEE is scored with:
   - math error:     next_step is unparseable, not equivalent, or makes no progress
@@ -20,6 +21,8 @@ Each hint the student WOULD SEE is scored with:
 Usage (from repo root; costs real API credit unless --fake):
     .venv/bin/python experiments/hint_experiment.py --per-skill 10
     .venv/bin/python experiments/hint_experiment.py --fake      # free dry run
+    .venv/bin/python experiments/hint_experiment.py --rescore experiments/results/<file>.jsonl
+        # re-score saved outputs with the current checker (no API calls)
 """
 
 import argparse
@@ -36,6 +39,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "backend"), str(REPO)]
 
 from dotenv import load_dotenv  # noqa: E402
+from sympy import expand  # noqa: E402
 
 from app.hints import (  # noqa: E402
     ClaudeHintLLM,
@@ -43,6 +47,7 @@ from app.hints import (  # noqa: E402
     check_hint,
     generate_hint,
 )
+from app.grader import X, parse_math  # noqa: E402
 from app.problems import generate_problem  # noqa: E402
 from app.skills import topological_order  # noqa: E402
 
@@ -63,10 +68,23 @@ def make_cases(per_skill: int) -> list[dict]:
         for _ in range(per_skill):
             p = generate_problem(skill, rng.randrange(10**9))
             cases.append({"problem": p, "state": "start", "current": p.expression})
-            if p.kind == "solve":
-                k = rng.choice([n for n in range(-9, 10) if abs(n) > 1])
-                cases.append({"problem": p, "state": "last_step", "current": f"{k}x = {k * int(p.answer)}"})
+            last = last_step(p)
+            if last:
+                cases.append({"problem": p, "state": "last_step", "current": last})
     return cases
+
+
+def last_step(p) -> str | None:
+    """The equation just before the answer: lhs - rhs = c*x + d  ->  "cx = -d"."""
+    if p.kind != "solve":
+        return None
+    lhs, rhs = p.expression.split("=")
+    e = expand(parse_math(lhs) - parse_math(rhs))
+    c, d = e.coeff(X), e.subs(X, 0)
+    if not c.is_integer or abs(c) == 1:  # x/a = q forms, or already "x = ..."
+        return None
+    step = f"{c}x = {-d}"
+    return None if step.replace(" ", "") == p.expression.replace(" ", "") else step
 
 
 def broad_leak(problem, text: str) -> bool:
@@ -150,13 +168,45 @@ class FakeLLM:
         return HintProposal(hint="Undo the operations on x one at a time, starting with the constant.", next_step="")
 
 
+def print_table(a: dict, b: dict) -> None:
+    print(f"\n{'condition':<15}{'n':>5}{'math err %':>12}{'leak % (checker)':>18}{'leak % (broad)':>16}")
+    for name, s in [("without check", a), ("with check", b)]:
+        print(f"{name:<15}{s['n']:>5}{s['math_error']:>12}{s['leak_checker']:>18}{s['leak_broad']:>16}")
+
+
+def rescore(path: Path) -> None:
+    """Recompute the scores of saved hints with the current check_hint/broad_leak.
+    The hints themselves (what students would have seen) are unchanged."""
+    path = path.resolve()
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    for r in rows:
+        p = generate_problem(r["skill"], int(r["problem_id"].split(":")[1]))
+        for key in ("without_check", "with_check"):
+            if not r[key].get("no_hint"):
+                r[key] = score(p, r["current"], r[key]["hint"], r[key]["next_step"])
+    out = path.with_name(path.stem + "-rescored.jsonl")
+    out.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    a, b = summarize(rows, "without_check"), summarize(rows, "with_check")
+    print_table(a, b)
+    model = path.stem.split("-2026")[0].removeprefix("hints-")
+    text = RESULTS_MD.read_text()
+    notes = f"RESCORED {path.name} with fixed leak checker (no new API calls) -> {out.relative_to(REPO)}"
+    text += f"| {date.today()} | {model} | without check | {a['n']} | {a['math_error']} | {a['leak_checker']} | {a['leak_broad']} | (see run) | (see run) | (see run) | {notes} |\n"
+    text += f"| {date.today()} | {model} | with check | {b['n']} | {b['math_error']} | {b['leak_checker']} | {b['leak_broad']} | (see run) | (see run) | (see run) | {notes} |\n"
+    RESULTS_MD.write_text(text)
+    print(f"logged to {RESULTS_MD.relative_to(REPO)}; rescored rows in {out.relative_to(REPO)}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--per-skill", type=int, default=10)
     ap.add_argument("--model", default=None, help="defaults to HINT_MODEL or claude-opus-5-5")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--fake", action="store_true", help="no API calls; doesn't write results.md")
+    ap.add_argument("--rescore", type=Path, help="re-score a saved .jsonl with the current checker")
     args = ap.parse_args()
+    if args.rescore:
+        return rescore(args.rescore)
 
     load_dotenv(REPO / ".env")
     llm = FakeLLM() if args.fake else ClaudeHintLLM(model=args.model)
@@ -174,9 +224,7 @@ def main():
     price = PRICES.get(llm.model)
     cost = f"${(u['input_tokens'] * price[0] + u['output_tokens'] * price[1]) / 1e6:.2f}" if price else "n/a"
 
-    print(f"\n{'condition':<15}{'n':>5}{'math err %':>12}{'leak % (checker)':>18}{'leak % (broad)':>16}")
-    for name, s in [("without check", a), ("with check", b)]:
-        print(f"{name:<15}{s['n']:>5}{s['math_error']:>12}{s['leak_checker']:>18}{s['leak_broad']:>16}")
+    print_table(a, b)
     print(f"\nwith check: fallback {fallback}%, {calls} LLM calls/hint, {secs}s/hint")
     print(f"tokens: {u['input_tokens']} in / {u['output_tokens']} out over {u['calls']} calls, est. cost {cost}")
 

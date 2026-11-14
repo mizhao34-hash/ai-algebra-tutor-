@@ -44,6 +44,22 @@ def test_wrong_math_rejected(step):
     assert any("not equivalent" in e for e in check_hint(SOLVE, SOLVE.expression, P(next_step=step)))
 
 
+@pytest.mark.parametrize(
+    "problem_expr,step",
+    [("3(x - 2) = 21", "3x - 6 = 21"), ("3x + 5 - x = 17", "2x + 5 = 17"), ("-4(x - 4) + 6x = 5x - 5", "-4x + 16 + 6x = 5x - 5")],
+)
+def test_rewriting_one_side_is_progress(problem_expr, step):
+    """Regression: distributing/combining doesn't change a side's VALUE but is a real step."""
+    from sympy import Eq, solve
+
+    from app.grader import X, parse_math
+
+    lhs, rhs = problem_expr.split("=")
+    ans = str(solve(Eq(parse_math(lhs), parse_math(rhs)), X)[0])
+    p = Problem("t:9", "multi_step", "solve", "Solve for x:", problem_expr, ans)
+    assert check_hint(p, problem_expr, P("Distribute / combine.", step)) == []
+
+
 def test_no_progress_rejected():
     assert any("doesn't change" in e for e in check_hint(SOLVE, SOLVE.expression, P(next_step="3x+5=17")))
 
@@ -61,6 +77,15 @@ def test_answer_in_hint_text_rejected(text):
 @pytest.mark.parametrize("text", ["x = 40 would be wrong", "Subtract 4 from both sides", "x = -4 is a common mistake"])
 def test_leak_check_avoids_obvious_false_alarms(text):
     assert not leaks_answer(SOLVE, text)
+
+
+def test_coefficient_times_x_is_not_a_leak_when_answer_is_zero():
+    """Regression: '8x = 0' contains the characters 'x = 0' but doesn't reveal x."""
+    zero = Problem("t:0", "two_step", "solve", "Solve for x:", "8x + 3 = 3", "0")
+    assert not leaks_answer(zero, "Your equation 8x = 0 is correct so far.")
+    assert not leaks_answer(zero, "Now 0 = 2x, so divide.")
+    assert leaks_answer(zero, "So x = 0.")
+    assert leaks_answer(zero, "That means 0 = x")
 
 
 def test_negative_answers_and_other_kinds():

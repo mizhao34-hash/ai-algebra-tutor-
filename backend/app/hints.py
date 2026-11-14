@@ -88,19 +88,26 @@ def _solutions(lhs, rhs) -> list:
     return solve(Eq(lhs, rhs), X)
 
 
+def _same_text(a: str, b: str) -> bool:
+    return a.replace(" ", "") == b.replace(" ", "")
+
+
 def leaks_answer(problem: Problem, text: str) -> bool:
     """Does free text state the final answer? Deliberately strict: a false
     alarm only costs a retry, a miss gives the answer away."""
-    t = text.replace(" ", "").replace("−", "-").lower()
+    raw = text.replace("−", "-").lower()
     ans = problem.answer.replace(" ", "").lower()
     if problem.kind == "simplify":
-        return ans in t
+        return ans in raw.replace(" ", "")
+    # Remove spaces only around "=", keeping word boundaries, so "so x = 4" -> "so x=4"
+    # while "8x = 0" -> "8x=0" still shows the 8 in front of x.
+    t = re.sub(r"\s*=\s*", "=", raw)
     a = re.escape(ans)
     end = r"(?!\d|[/.]\d)"  # not followed by more digits, "/2" or ".5" ("x = 4." still counts)
-    # "x=4", "4=x", "x is 4", and for evaluate also "= -13", "is -13"
-    patterns = [rf"x=+{a}{end}", rf"(?<![\d.]){a}=x", rf"xis{a}{end}"]
+    alone = r"(?<![\w)])"    # x is a bare variable, not "8x" or "(x"
+    patterns = [rf"{alone}x=+{a}{end}", rf"(?<![\d.]){a}=x(?![\w(])", rf"{alone}x\s+is\s+{a}{end}"]
     if problem.kind == "evaluate":
-        patterns += [rf"(=|is){a}{end}"]
+        patterns += [rf"(=|\bis\s+){a}{end}"]
     return any(re.search(p, t) for p in patterns)
 
 
@@ -124,7 +131,9 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
             sols = _solutions(lhs, rhs)
             if sols != [parse_math(problem.answer)]:
                 errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original equation."))
-            elif expand(lhs - cur_l) == 0 and expand(rhs - cur_r) == 0:
+            # Compare the WRITTEN form, not the value: distributing or combining like
+            # terms never changes a side's value, but it is real progress.
+            elif _same_text(step, current):
                 errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
             # "x = 4" or "4 = x" (any arrangement where one side is just x) is the answer itself.
             elif (lhs == X and not rhs.has(X)) or (rhs == X and not lhs.has(X)):
@@ -133,7 +142,7 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
             expr, cur = parse_math(step), parse_math(current)
             if expand(expr - parse_math(problem.answer)) != 0:
                 errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original expression."))
-            elif step.replace(" ", "") == current.replace(" ", ""):
+            elif _same_text(step, current):
                 errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
             elif is_simplest_linear(step):
                 errors.append(HintIssue("leak_step", "The next step is the final answer; leave next_step empty instead."))

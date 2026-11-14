@@ -46,5 +46,5 @@ Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, aut
 - [x] Week 4: backend API + model inference (FastAPI + SQLite, DKT mastery, recommendation rule; run: .venv/bin/uvicorn backend.app.main:app)
 - [x] Week 5: frontend (Next.js 14 + Tailwind: /practice, /dashboard; run: cd frontend && npm run dev, with the backend on :8000)
 - [x] Week 6: LLM hints + verification loop (backend/app/hints.py: Claude structured output, SymPy check, 3 retries, fallback; needs ANTHROPIC_API_KEY in .env)
-- [ ] Week 7: experiments + deployment — exp 2 script ready (experiments/hint_experiment.py, needs API credit); deploy files ready (backend/Dockerfile, render.yaml, DEPLOY.md), not yet deployed
+- [ ] Week 7: experiments + deployment — exp 2 DONE (Opus 5.5 + Haiku 5.5, results.md + experiments/hint_audit.md); deploy files ready (backend/Dockerfile, render.yaml, DEPLOY.md), not yet deployed
 - [ ] Week 8: report + demo video
