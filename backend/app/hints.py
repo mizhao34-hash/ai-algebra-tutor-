@@ -17,6 +17,7 @@ so students can't put free text into the prompt.
 
 import os
 import re
+import threading
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -56,6 +57,16 @@ class HintLLM(Protocol):
     def propose(self, problem: Problem, current: str, rejections: list[str]) -> HintProposal: ...
 
 
+class HintIssue(str):
+    """A rejection reason: reads like a plain message (it is a str, sent back to
+    the LLM) but also carries a short machine-readable `code` for experiments."""
+
+    def __new__(cls, code: str, message: str):
+        obj = super().__new__(cls, message)
+        obj.code = code
+        return obj
+
+
 class HintLLMError(RuntimeError):
     """The LLM call failed or refused; counts as a failed attempt."""
 
@@ -93,15 +104,16 @@ def leaks_answer(problem: Problem, text: str) -> bool:
     return any(re.search(p, t) for p in patterns)
 
 
-def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[str]:
-    """Return the reasons a hint is unacceptable ([] means it passed)."""
-    errors: list[str] = []
+def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[HintIssue]:
+    """Return the reasons a hint is unacceptable ([] means it passed).
+    Codes: empty_hint, leak_text, leak_step, not_equivalent, no_progress, unparseable."""
+    errors: list[HintIssue] = []
     step = proposal.next_step.strip()
 
     if not proposal.hint.strip():
-        errors.append("The hint text is empty.")
+        errors.append(HintIssue("empty_hint", "The hint text is empty."))
     if leaks_answer(problem, proposal.hint):
-        errors.append("The hint text reveals the final answer.")
+        errors.append(HintIssue("leak_text", "The hint text reveals the final answer."))
     if not step:
         return errors  # describing the operation without writing the step is allowed
 
@@ -111,22 +123,22 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[s
             cur_l, cur_r = _split_equation(current)
             sols = _solutions(lhs, rhs)
             if sols != [parse_math(problem.answer)]:
-                errors.append(f"'{step}' is not equivalent to the original equation.")
+                errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original equation."))
             elif expand(lhs - cur_l) == 0 and expand(rhs - cur_r) == 0:
-                errors.append(f"'{step}' doesn't change anything; it should make one step of progress.")
+                errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
             # "x = 4" or "4 = x" (any arrangement where one side is just x) is the answer itself.
             elif (lhs == X and not rhs.has(X)) or (rhs == X and not lhs.has(X)):
-                errors.append("The next step reveals the final answer; leave next_step empty instead.")
+                errors.append(HintIssue("leak_step", "The next step reveals the final answer; leave next_step empty instead."))
         else:
             expr, cur = parse_math(step), parse_math(current)
             if expand(expr - parse_math(problem.answer)) != 0:
-                errors.append(f"'{step}' is not equivalent to the original expression.")
+                errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original expression."))
             elif step.replace(" ", "") == current.replace(" ", ""):
-                errors.append(f"'{step}' doesn't change anything; it should make one step of progress.")
+                errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
             elif is_simplest_linear(step):
-                errors.append("The next step is the final answer; leave next_step empty instead.")
+                errors.append(HintIssue("leak_step", "The next step is the final answer; leave next_step empty instead."))
     except InvalidInput as e:
-        errors.append(f"next_step '{step}' couldn't be parsed ({e}). Use only numbers, x, + - * / ( ) and =.")
+        errors.append(HintIssue("unparseable", f"next_step '{step}' couldn't be parsed ({e}). Use only numbers, x, + - * / ( ) and =."))
     return errors
 
 
@@ -215,6 +227,10 @@ class ClaudeHintLLM:
         # A short timeout because a student is waiting on this request.
         self.client = client or anthropic.Anthropic(timeout=60.0, max_retries=2)
         self.model = model or os.environ.get("HINT_MODEL", DEFAULT_MODEL)
+        # Running token totals (for cost reporting in experiments); the lock makes
+        # the counter safe when an experiment calls propose() from several threads.
+        self.usage = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
+        self._lock = threading.Lock()
 
     def propose(self, problem: Problem, current: str, rejections: list[str]) -> HintProposal:
         try:
@@ -244,6 +260,10 @@ class ClaudeHintLLM:
             raise HintLLMError(f"connection error: {e}") from e
         except anthropic.APIStatusError as e:  # rate limits, 5xx, bad requests
             raise HintLLMError(f"API error {e.status_code}: {e.message}") from e
+        with self._lock:
+            self.usage["input_tokens"] += msg.usage.input_tokens
+            self.usage["output_tokens"] += msg.usage.output_tokens  # includes thinking tokens
+            self.usage["calls"] += 1
         if msg.stop_reason == "refusal":
             raise HintLLMError("model declined to answer")
         if msg.stop_reason == "max_tokens" or msg.parsed_output is None:

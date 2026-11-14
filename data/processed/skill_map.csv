@@ -1,0 +1,113 @@
+skill_idx,skill_id,skill_name
+0,1,Box and Whisker
+1,2,Circle Graph
+2,4,Histogram as Table or Graph
+3,5,Number Line
+4,8,Scatter Plot
+5,9,Stem and Leaf Plot
+6,10,Table
+7,11,Venn Diagram
+8,12,Mean
+9,13,Median
+10,15,Range
+11,16,Counting Methods
+12,17,Probability of Two Distinct Events
+13,18,Probability of a Single Event
+14,21,Interior Angles Figures with More than 3 Sides
+15,22,Interior Angles Triangle
+16,24,Congruence
+17,25,Complementary and Supplementary Angles
+18,26,Angles on Parallel Lines Cut by a Transversal
+19,27,Pythagorean Theorem
+20,32,Nets of 3D Figures
+21,34,Unit Conversion Within a System
+22,35,Effect of Changing Dimensions of a Shape Prportionally
+23,39,Area Circle
+24,40,Circumference 
+25,42,Perimeter of a Polygon
+26,43,Reading a Ruler or Scale
+27,46,Calculations with Similar Figures
+28,47,Conversion of Fraction Decimals Percents
+29,48,Equivalent Fractions
+30,49,Ordering Positive Decimals
+31,50,Ordering Fractions
+32,51,Ordering Integers
+33,54,Rounding
+34,58,Addition Whole Numbers
+35,61,Division Fractions
+36,63,Estimation
+37,65,Least Common Multiple
+38,67,Multiplication Fractions
+39,70,Percent Of
+40,74,Subtraction Whole Numbers
+41,75,Square Root
+42,76,
+43,77,Finding Percents
+44,79,Proportion
+45,80,Scale Factor
+46,81,Unit Rate
+47,82,Scientific Notation
+48,83,Divisibility Rules
+49,84,Prime Number
+50,85,Absolute Value
+51,86,Exponents
+52,91,
+53,92,Pattern Finding 
+54,94,
+55,96,
+56,97,
+57,99,
+58,101,
+59,104,
+60,105,
+61,110,D.4.8-understanding-concept-of-probabilities
+62,163,Absolute Value
+63,165,Algebraic Simplification
+64,166,Algebraic Solving
+65,173,Choose an Equation from Given Information
+66,203,Percent Discount
+67,204,Percents
+68,217,Rate
+69,276,Multiplication and Division Positive Decimals
+70,277,Addition and Subtraction Integers
+71,278,Addition and Subtraction Positive Decimals
+72,279,Multiplication and Division Integers
+73,280,Addition and Subtraction Fractions
+74,290,Reflection
+75,292,Rotations
+76,293,Translations
+77,294,Area Irregular Figure
+78,295,Area Parallelogram
+79,296,Area Rectangle
+80,297,Area Trapezoid
+81,298,Area Triangle
+82,299,Surface Area Cylinder
+83,301,Surface Area Rectangular Prism
+84,303,Volume Cylinder
+85,307,Volume Rectangular Prism
+86,308,Volume Sphere
+87,309,"Order of Operations +,-,/,* () positive reals"
+88,310,Order of Operations All
+89,311,Equation Solving Two or Fewer Steps
+90,312,Equation Solving More Than Two Steps
+91,314,"Angles - Obtuse, Acute, and Right"
+92,317,Greatest Common Factor
+93,322,Write Linear Equation from Ordered Pairs
+94,323,Write Linear Equation from Situation
+95,324,Recognize Linear Pattern
+96,325,Write Linear Equation from Graph
+97,331,Finding Slope From Situation
+98,333,Finding Slope From Equation
+99,334,Finding Slope from Ordered Pairs
+100,340,Distributive Property
+101,343,Midpoint
+102,346,Polynomial Factors
+103,348,Recognize Quadratic Pattern
+104,350,Solving Systems of Linear Equations
+105,356,Quadratic Formula to Solve Quadratic Equation
+106,362,"Parts of a Polyomial, Terms, Coefficient, Monomial, Exponent, Variable"
+107,365,Interpreting Coordinate Graphs 
+108,367,
+109,368,Solving for a variable
+110,371,Simplifying Expressions positive exponents
+111,378,Solving Systems of Linear Equations by Graphing

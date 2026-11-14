@@ -77,6 +77,11 @@ def test_unparseable_step_rejected():
     assert any("couldn't be parsed" in e for e in check_hint(SOLVE, SOLVE.expression, P(next_step="3x equals 12")))
 
 
+def test_issues_carry_codes():
+    issues = check_hint(SOLVE, "3x = 12", P("so x = 4", "x = 4"))
+    assert [i.code for i in issues] == ["leak_text", "leak_step"]
+
+
 def test_validate_current():
     validate_current(SOLVE, "3x = 12")
     for bad in ["3x = 13", "hello", "3x + 5"]:
@@ -154,7 +159,8 @@ class FakeClient:
 
 
 def test_claude_request_shape_and_parsing():
-    client = FakeClient(SimpleNamespace(stop_reason="end_turn", parsed_output=P()))
+    usage = SimpleNamespace(input_tokens=100, output_tokens=20)
+    client = FakeClient(SimpleNamespace(stop_reason="end_turn", parsed_output=P(), usage=usage))
     out = ClaudeHintLLM(model="claude-opus-5-5", client=client).propose(SOLVE, SOLVE.expression, [])
     assert out == P()
     kw = client.kwargs
@@ -164,7 +170,7 @@ def test_claude_request_shape_and_parsing():
 
 @pytest.mark.parametrize("stop", ["refusal", "max_tokens"])
 def test_claude_refusal_or_truncation_is_a_failed_attempt(stop):
-    client = FakeClient(SimpleNamespace(stop_reason=stop, parsed_output=None))
+    client = FakeClient(SimpleNamespace(stop_reason=stop, parsed_output=None, usage=SimpleNamespace(input_tokens=1, output_tokens=1)))
     with pytest.raises(HintLLMError):
         ClaudeHintLLM(client=client).propose(SOLVE, SOLVE.expression, [])
 

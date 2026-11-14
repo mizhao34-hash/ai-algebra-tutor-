@@ -14,8 +14,15 @@ __pycache__/
 node_modules/
 .next/
 
-# Trained model files
-ml/checkpoints/
+# Trained model files: only the DKT weights the deployed API needs are committed.
+ml/checkpoints/*
+!ml/checkpoints/dkt.pt
+!ml/checkpoints/dkt_config.json
+
+# Processed data: only the skill id mapping (no student rows) is committed.
+data/processed/*
+!data/processed/skill_map.csv
+!data/processed/stats.json
 
 # Local SQLite database
 *.db

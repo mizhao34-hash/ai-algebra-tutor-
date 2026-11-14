@@ -1,0 +1,12 @@
+{
+  "seed": 42,
+  "hidden_size": 100,
+  "embed_size": 100,
+  "dropout": 0.2,
+  "lr": 0.001,
+  "batch_size": 64,
+  "max_len": 200,
+  "max_epochs": 30,
+  "patience": 3,
+  "num_skills": 112
+}

@@ -1,0 +1,13 @@
+# Keep secrets and bulky files out of the Docker build context.
+.env
+.env.*
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+frontend
+data/raw
+data/processed/*.csv
+!data/processed/skill_map.csv
+experiments
+*.db

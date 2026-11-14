@@ -1,0 +1,16 @@
+{
+  "seed": 42,
+  "raw_rows": 525534,
+  "raw_students": 4217,
+  "after_drop_null_skill": 459208,
+  "after_dedup_order_id": 283105,
+  "after_min_interactions": 282969,
+  "students": 4027,
+  "num_skills": 112,
+  "train_students": 2818,
+  "train_rows": 201797,
+  "val_students": 604,
+  "val_rows": 44778,
+  "test_students": 605,
+  "test_rows": 36394
+}
