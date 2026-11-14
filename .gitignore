@@ -19,3 +19,5 @@ ml/checkpoints/
 
 # Local SQLite database
 *.db
+!.env*.example
+*.tsbuildinfo

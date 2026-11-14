@@ -44,7 +44,7 @@ Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, aut
 - [x] Week 2: BKT + DKT training and comparison (test AUC: BKT 0.708, DKT 0.751)
 - [x] Week 3: problem templates + SymPy grader (backend/app: skills.py, problems.py, grader.py; 106 tests)
 - [x] Week 4: backend API + model inference (FastAPI + SQLite, DKT mastery, recommendation rule; run: .venv/bin/uvicorn backend.app.main:app)
-- [ ] Week 5: frontend
+- [x] Week 5: frontend (Next.js 14 + Tailwind: /practice, /dashboard; run: cd frontend && npm run dev, with the backend on :8000)
 - [ ] Week 6: LLM hints + verification loop
 - [ ] Week 7: experiments + deployment
 - [ ] Week 8: report + demo video
