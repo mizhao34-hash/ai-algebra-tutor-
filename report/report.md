@@ -343,14 +343,10 @@ answer" step.
 - Persistent storage (Postgres) for real deployments.
 
 ## 9. Conclusion
-TODO (3–5 sentences, your own words): what you built, the answer to each RQ, and the main
-lesson. Suggested lesson: "LLMs are useful tutors when their mathematical claims are
-verified, but the verifier itself must be tested, because both its misses and its false
-alarms affect students."
+This project built and deployed an adaptive algebra tutor whose LLM features are constrained by a computer algebra system. On held-out ASSISTments students, DKT predicted performance better than BKT (test AUC 0.751 vs. 0.708), answering RQ1. For RQ2, verifying each hint step with SymPy removed every detectable answer leak from a weaker LLM (7.9% to 0%) at about 11% more model calls, while a stronger LLM rarely needed correction. For RQ3, multi-step tutor walkthroughs could be verified in the same way: all 40 shown walkthroughs passed every check. The main lesson is that LLMs become usable as math tutors when their mathematical claims are treated as claims to verify rather than as trusted output, but the verifier is itself a model that must be tested: in both LLM experiments, our own checker produced errors that only careful inspection of its outputs revealed.
 
 ## 10. Reflection
-TODO (your own words): what was hardest, what you would do differently, the scope changes
-you made (course platform, AI tutor), and why.
+The hardest part was not any single model but the joints between components. DKT was trained on ASSISTments skills, so connecting it to my own curriculum required a skill mapping, and some of the closest-named skills had almost no training data; I had to set a minimum-data rule and fall back to BKT where data did not exist. The experiments were also humbling: three bugs in my own verification pipeline, and a false alarm that made the tutor look worse than it was, only surfaced because I inspected individual outputs instead of trusting summary numbers. The scope grew during the project, from one unit of linear equations to a three-course platform with lessons and an AI tutor, because early testing showed that practice alone, without a place to learn concepts or ask questions, was not a usable learning experience. If I started again, I would plan the evaluation with real students from the beginning, since learning gains are the question this project cannot yet answer, and I would write tests for the verifier before running experiments with it.
 
 ---
 

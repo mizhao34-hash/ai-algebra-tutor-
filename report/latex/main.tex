@@ -64,9 +64,10 @@ Practice is most useful when it targets what a student has not yet mastered, and
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-  box/.style={draw, rounded corners=3pt, fill=white, align=center, font=\footnotesize, minimum height=7mm, inner sep=3pt},
+  box/.style={draw, rounded corners=3pt, fill=white, align=center, font=\footnotesize, minimum height=8mm, inner sep=3pt},
   group/.style={draw, rounded corners=5pt, inner sep=6pt, fill=#1},
   >={Stealth[length=2mm]}]
+  % Frontend
   \node[box] (lesson) {Lessons};
   \node[box, right=2.5mm of lesson] (practice) {Practice};
   \node[box, right=2.5mm of practice] (dash) {Dashboard};
@@ -74,21 +75,26 @@ Practice is most useful when it targets what a student has not yet mastered, and
   \begin{scope}[on background layer]
     \node[group=blue!6, fit=(lesson)(tutor), label={[font=\footnotesize\bfseries]above:{Frontend: Next.js on Vercel}}] (fe) {};
   \end{scope}
-  \node[box, below=15mm of lesson] (gen) {Problem\\generator};
+  % Backend, row 1: problems and mastery (mastery on the right, next to the DKT model)
+  \node[box, below=16mm of lesson.south west, anchor=north west] (gen) {Problem\\generator};
   \node[box, right=2.5mm of gen] (grader) {SymPy\\grader};
-  \node[box, right=2.5mm of grader] (kt) {Mastery\\DKT + BKT};
-  \node[box, right=2.5mm of kt] (rec) {Recommend-\\ation};
-  \node[box, below=3mm of grader] (hint) {Hints +\\tutor};
-  \node[box, right=2.5mm of hint] (ver) {SymPy\\verifier};
+  \node[box, right=2.5mm of grader] (rec) {Recommender};
+  \node[box, right=2.5mm of rec] (kt) {Mastery\\DKT + BKT};
+  % Backend, row 2: storage and LLM features (verifier on the right, next to the LLM)
+  \node[box, below=3mm of kt.south east, anchor=north east] (ver) {SymPy\\verifier};
+  \node[box, left=2.5mm of ver] (hint) {Hints +\\AI tutor};
   \node[box, left=2.5mm of hint] (db) {SQLite};
   \begin{scope}[on background layer]
-    \node[group=green!6, fit=(gen)(rec)(hint)(db), label={[font=\footnotesize\bfseries]below:{Backend: FastAPI in Docker on Render}}] (be) {};
+    \node[group=green!6, fit=(gen)(kt)(ver)(db), label={[font=\footnotesize\bfseries]below:{Backend: FastAPI in Docker on Render}}] (be) {};
   \end{scope}
-  \node[box, right=10mm of ver, fill=orange!10] (llm) {Claude API\\(structured output)};
-  \node[box, above=5mm of llm, fill=purple!8] (dkt) {DKT LSTM\\(PyTorch, offline)};
+  % External services, outside the backend box
+  \coordinate (ext) at ([xshift=9mm]be.east);
+  \node[box, anchor=west, fill=purple!8] (dkt) at (ext |- kt) {DKT LSTM\\(PyTorch, trained offline)};
+  \node[box, anchor=west, fill=orange!10] (llm) at (ext |- ver) {Claude API\\(structured output)};
+  % Arrows
   \draw[<->, thick] (fe.south) -- node[right, font=\scriptsize]{JSON over HTTPS} (fe.south |- be.north);
-  \draw[<->] (ver.east) -- (llm.west);
-  \draw[->, dashed] (dkt.west) -- (kt.east |- dkt.west) -- (kt.north east);
+  \draw[->, dashed] (dkt.west) -- (kt.east);
+  \draw[<->] (llm.west) -- (ver.east);
 \end{tikzpicture}
 \caption{Architecture. Every math step proposed by the LLM passes the SymPy verifier before reaching the browser.}
 \label{fig:arch}
@@ -171,10 +177,10 @@ We made 40 paired tutor requests: for each of the 8 units, three ``explain this 
 \paragraph{Future work.} A classroom study of learning gains; knowledge tracing data for Algebra~2 topics, or BKT parameters fitted from the platform's own logs; verifying equations inside the explanation text; and attention-based knowledge tracing~\cite{pandey2019sakt}.
 
 \section{Conclusion}
-\todo{3--5 sentences in your own words: what you built, the answer to each research question, and the main lesson. Suggested lesson: LLMs are useful tutors when their mathematical claims are verified, but the verifier itself must be tested, because both its misses and its false alarms affect students.}
+This project built and deployed an adaptive algebra tutor whose LLM features are constrained by a computer algebra system. On held-out ASSISTments students, DKT predicted performance better than BKT (test AUC 0.751 vs.\ 0.708), answering RQ1. For RQ2, verifying each hint step with SymPy removed every detectable answer leak from a weaker LLM (7.9\% to 0\%) at about 11\% more model calls, while a stronger LLM rarely needed correction. For RQ3, multi-step tutor walkthroughs could be verified in the same way: all 40 shown walkthroughs passed every check. The main lesson is that LLMs become usable as math tutors when their mathematical claims are treated as claims to verify rather than as trusted output, but the verifier is itself a model that must be tested: in both LLM experiments, our own checker produced errors that only careful inspection of its outputs revealed.
 
 \section*{Reflection}
-\todo{A short paragraph in your own words: what was hardest, what you would do differently, and why you changed the scope (course platform, AI tutor).}
+The hardest part was not any single model but the joints between components. DKT was trained on ASSISTments skills, so connecting it to my own curriculum required a skill mapping, and some of the closest-named skills had almost no training data; I had to set a minimum-data rule and fall back to BKT where data did not exist. The experiments were also humbling: three bugs in my own verification pipeline, and a false alarm that made the tutor look worse than it was, only surfaced because I inspected individual outputs instead of trusting summary numbers. The scope grew during the project, from one unit of linear equations to a three-course platform with lessons and an AI tutor, because early testing showed that practice alone, without a place to learn concepts or ask questions, was not a usable learning experience. If I started again, I would plan the evaluation with real students from the beginning, since learning gains are the question this project cannot yet answer, and I would write tests for the verifier before running experiments with it.
 
 \medskip
 \noindent\small Live site: \url{https://ai-algebra-tutor-pi.vercel.app}
