@@ -1,9 +1,9 @@
-from app.courses import COURSES
 from app.recommend import is_unlocked, recommend
 from app.skills import SKILLS
 
-# These tests are about the original 9-skill graph (Pre-Algebra + Algebra 1).
-NINE = COURSES["pre_algebra"].skills + COURSES["algebra_1"].skills
+# These tests are about the original 9-skill linear-equation graph.
+NINE = ["integer_ops", "combine_like_terms", "distributive", "one_step_add", "one_step_mul",
+        "two_step", "vars_both_sides", "parentheses", "multi_step"]
 
 
 def mastery(**overrides):

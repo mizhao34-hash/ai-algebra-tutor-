@@ -7,7 +7,7 @@ export type Problem = {
   id: string; // "skill:seed"; the server regenerates the problem from it to grade
   skill: string;
   skill_name: string;
-  kind: "evaluate" | "simplify" | "solve";
+  kind: "evaluate" | "simplify" | "solve" | "inequality";
   prompt: string;
   expression: string;
   // No answer field: the backend never sends it.
@@ -27,6 +27,7 @@ export type SkillMastery = {
 export type MasteryReport = {
   user_id: string;
   course: string | null; // set when restricted to one course
+  unit: { id: string; name: string } | null; // set when restricted to one unit
   threshold: number;
   recommended: string;
   skills: SkillMastery[]; // in prerequisite (topological) order
@@ -67,6 +68,7 @@ export type Course = {
 export type JoinedCourse = Course & {
   joined_at: string;
   summary: { skills: number; mastered: number; average_mastery: number; attempts: number; correct: number };
+  units_progress: { id: string; name: string; skills: number; mastered: number; average_mastery: number }[];
   mastery: MasteryReport;
 };
 
@@ -111,14 +113,16 @@ export const api = {
   join: (userId: string, courseId: string) =>
     request<{ joined: string }>(`${user(userId)}/courses/${encodeURIComponent(courseId)}`, { method: "POST" }),
 
-  mastery: (userId: string, course?: string) => request<MasteryReport>(`${user(userId)}/mastery${query({ course })}`),
+  // `unit` narrows a course to one of its units.
+  mastery: (userId: string, course?: string, unit?: string) =>
+    request<MasteryReport>(`${user(userId)}/mastery${query({ course, unit })}`),
 
-  // Without `skill`, the backend picks the recommended skill (within `course` if given).
-  nextProblem: (userId: string, skill?: string, course?: string) =>
-    request<Problem>(`${user(userId)}/next${query({ skill, course })}`),
+  // Without `skill`, the backend picks the recommended skill (within the course/unit if given).
+  nextProblem: (userId: string, skill?: string, course?: string, unit?: string) =>
+    request<Problem>(`${user(userId)}/next${query({ skill, course, unit })}`),
 
-  submit: (userId: string, problemId: string, answer: string, course?: string) =>
-    request<AttemptResult>(`${user(userId)}/attempts${query({ course })}`, {
+  submit: (userId: string, problemId: string, answer: string, course?: string, unit?: string) =>
+    request<AttemptResult>(`${user(userId)}/attempts${query({ course, unit })}`, {
       method: "POST",
       body: JSON.stringify({ problem_id: problemId, answer }),
     }),

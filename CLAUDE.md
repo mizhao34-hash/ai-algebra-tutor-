@@ -22,7 +22,9 @@ Final quarter: ~8 weeks. Keep scope small. Do not add features beyond this file.
 - Algebra only. Pre-Algebra + Algebra 1 skills use DKT (>= 1000 ASSISTments rows each).
   Algebra 2 (quadratics unit) has no ASSISTments data, so its mastery uses BKT with hand-set
   parameters (backend/app/bkt.py) — a documented limitation.
-- Done: platform + lessons for all 12 skills + Algebra 2 quadratics. If time: new Pre-Algebra skills.
+- Units are dropdowns in the Lesson tab; each unit has its own practice (?unit=) and progress on the Dashboard.
+- 18 skills in 8 units. DKT: integers, exponents/roots, expressions, linear equations (11 skills).
+  BKT: inequalities, polynomials, quadratics (7 skills).
 
 ## Scope (out)
 Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, auth beyond a simple user id.

@@ -49,9 +49,12 @@ from app.hints import (  # noqa: E402
 )
 from app.grader import X, parse_math  # noqa: E402
 from app.problems import generate_problem  # noqa: E402
-from app.skills import SKILLS, topological_order  # noqa: E402
+from app.skills import topological_order  # noqa: E402
 
 SEED = 42
+# The 9 skills the experiment was run on; listed explicitly so later skills don't change the cases.
+ORIGINAL_SKILLS = {"integer_ops", "combine_like_terms", "distributive", "one_step_add", "one_step_mul",
+                   "two_step", "vars_both_sides", "parentheses", "multi_step"}
 RESULTS_MD = REPO / "experiments" / "results.md"
 OUT_DIR = REPO / "experiments" / "results"
 # USD per million tokens (input, output), for the cost estimate only.
@@ -66,7 +69,7 @@ def make_cases(per_skill: int) -> list[dict]:
     cases = []
     # The 9 linear-equation skills the experiment was run on (Algebra 2 skills were
     # added later); fixed so the sampled cases stay identical when re-run.
-    for skill in [s for s in topological_order() if SKILLS[s].assistments_skill_ids]:
+    for skill in [s for s in topological_order() if s in ORIGINAL_SKILLS]:
         for _ in range(per_skill):
             p = generate_problem(skill, rng.randrange(10**9))
             cases.append({"problem": p, "state": "start", "current": p.expression})

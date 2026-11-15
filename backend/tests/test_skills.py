@@ -5,7 +5,7 @@ from app.skills import SKILLS, Skill, topological_order
 
 
 def test_skill_count():
-    assert len(SKILLS) == 12  # 9 linear (DKT) + 3 quadratic (BKT)
+    assert len(SKILLS) == 18  # 11 with DKT data + 7 BKT-only
 
 
 def test_prerequisites_come_first():
@@ -17,11 +17,12 @@ def test_prerequisites_come_first():
             assert pos[pre] < pos[s.id]
 
 
-def test_only_algebra_2_skills_lack_a_dkt_mapping():
-    from app.courses import COURSES
+def test_bkt_only_skills_are_exactly_the_units_without_assistments_data():
+    from app.courses import UNITS
 
     unmapped = {sid for sid, s in SKILLS.items() if not s.assistments_skill_ids}
-    assert unmapped == set(COURSES["algebra_2"].skills)
+    expected = {s for u in ("inequalities", "polynomials", "quadratics") for s in UNITS[u][1].skills}
+    assert unmapped == expected
 
 
 def test_cycle_is_detected(monkeypatch):

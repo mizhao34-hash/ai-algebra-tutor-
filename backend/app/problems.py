@@ -23,7 +23,7 @@ SOLUTION_RANGE = range(-10, 11)
 class Problem:
     id: str          # "skill:seed", enough to regenerate the problem
     skill: str
-    kind: str        # "evaluate" (a number), "simplify" (an expression), "solve" (x = ...)
+    kind: str        # "evaluate" (a number), "simplify" (an expression), "solve" (x = ...), "inequality" (x > ...)
     prompt: str      # instruction shown to the student
     expression: str  # the math itself, in a form the grader's parser accepts
     answer: str      # canonical answer, e.g. "4" or "2x + 7"
@@ -173,6 +173,76 @@ def _quad_factor_solve(r: random.Random):
     return "solve", "Solve for x (give both solutions):", expr, _roots(r1, r2)
 
 
+# ---------- Pre-Algebra: exponents and square roots ----------
+
+def _exponents(r: random.Random):
+    a, b = r.randint(2, 5), r.randint(2, 6)
+    form = r.choice(["sum", "neg_paren", "neg_plain"])
+    if form == "sum":
+        n, m = r.choice([2, 3]), 2
+        return "evaluate", "Evaluate:", f"{a}^{n} + {b}^{m}", str(a**n + b**m)
+    if form == "neg_paren":  # (-3)^2 = 9: the parentheses include the sign
+        n = r.choice([2, 3])
+        return "evaluate", "Evaluate:", f"(-{a})^{n}", str((-a) ** n)
+    # -3^2 = -9: the exponent applies before the minus sign
+    return "evaluate", "Evaluate:", f"-{a}^2 + {b}", str(-(a * a) + b)
+
+
+def _square_roots(r: random.Random):
+    a, c = r.randint(2, 12), r.randint(2, 5)
+    b = r.choice([n for n in range(2, 13) if n != a])  # a == b would make "diff" trivially 0
+    form = r.choice(["sum", "diff", "coef"])
+    if form == "sum":
+        return "evaluate", "Evaluate:", f"sqrt({a * a}) + sqrt({b * b})", str(a + b)
+    if form == "diff":
+        return "evaluate", "Evaluate:", f"sqrt({a * a}) - sqrt({b * b})", str(a - b)
+    return "evaluate", "Evaluate:", f"{c}sqrt({a * a})", str(c * a)
+
+
+# ---------- Algebra 1: linear inequalities (answer stored as "x > 3") ----------
+
+FLIP = {"<": ">", ">": "<", "<=": ">=", ">=": "<="}
+
+
+def _one_step_ineq(r: random.Random):
+    x, op = r.choice(SOLUTION_RANGE), r.choice(list(FLIP))
+    if r.random() < 0.5:
+        b = r.choice(COEF_RANGE)  # x + b op x0 + b
+        return "inequality", "Solve the inequality:", f"{_linear(1, b)} {op} {x + b}", f"x {op} {x}"
+    a = r.choice(MULT_RANGE)  # dividing by a negative a flips the sign
+    return "inequality", "Solve the inequality:", f"{a}x {op} {a * x}", f"x {op if a > 0 else FLIP[op]} {x}"
+
+
+def _two_step_ineq(r: random.Random):
+    x, op = r.choice(SOLUTION_RANGE), r.choice(list(FLIP))
+    a, b = r.choice(MULT_RANGE), r.choice(COEF_RANGE)
+    return "inequality", "Solve the inequality:", f"{_linear(a, b)} {op} {a * x + b}", f"x {op if a > 0 else FLIP[op]} {x}"
+
+
+# ---------- Algebra 2: polynomials ----------
+
+def _poly(c2: int, c1: int, c0: int) -> str:
+    """c2 x^2 + c1 x + c0, skipping zero terms: (1, 5, 6) -> 'x^2 + 5x + 6'."""
+    out = _term(c2, "x^2", first=True)
+    if c1:
+        out += _term(c1)
+    if c0:
+        out += _term(c0, var="")
+    return out
+
+
+def _multiply_binomials(r: random.Random):
+    a, b = r.choice(COEF_RANGE), r.choice(COEF_RANGE)
+    # (x + a)(x + b) = x^2 + (a + b)x + ab
+    return "simplify", "Multiply and simplify:", f"({_linear(1, a)})({_linear(1, b)})", _poly(1, a + b, a * b)
+
+
+def _square_binomial(r: random.Random):
+    a = r.choice(COEF_RANGE)
+    # (x + a)^2 = x^2 + 2ax + a^2, not x^2 + a^2
+    return "simplify", "Expand and simplify:", f"({_linear(1, a)})^2", _poly(1, 2 * a, a * a)
+
+
 GENERATORS = {
     "integer_ops": _integer_ops,
     "combine_like_terms": _combine_like_terms,
@@ -186,6 +256,12 @@ GENERATORS = {
     "quad_square_root": _quad_square_root,
     "quad_factored": _quad_factored,
     "quad_factor_solve": _quad_factor_solve,
+    "exponents": _exponents,
+    "square_roots": _square_roots,
+    "one_step_ineq": _one_step_ineq,
+    "two_step_ineq": _two_step_ineq,
+    "multiply_binomials": _multiply_binomials,
+    "square_binomial": _square_binomial,
 }
 assert set(GENERATORS) == set(SKILLS), "every skill needs exactly one generator"
 

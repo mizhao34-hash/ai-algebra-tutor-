@@ -15,8 +15,8 @@ skills failed this rule, so they were replaced by related, well-trained ones:
     Distributive Property    (340, 10 rows) -> Order of Operations with () (309)
     Algebraic Solving        (166, 267 rows) -> dropped; multi_step uses 312 only
 
-Skills with NO ASSISTments ids (Algebra 2) have no DKT training data at all;
-their mastery comes from BKT instead (see bkt.py and mastery.py).
+Skills with NO ASSISTments ids (inequalities, polynomials, quadratics) have no
+DKT training data at all; their mastery comes from BKT instead (bkt.py, mastery.py).
 """
 
 from dataclasses import dataclass
@@ -51,10 +51,19 @@ SKILLS: dict[str, Skill] = {
         Skill("vars_both_sides", "Variables on both sides", ("two_step", "combine_like_terms"), (312,)),
         Skill("parentheses", "Equations with parentheses", ("two_step", "distributive"), (312, 309)),
         Skill("multi_step", "Multi-step equations", ("vars_both_sides", "parentheses"), (312,)),
+        # Pre-Algebra: exponents and roots (DKT: ASSISTments "Exponents" 86, "Square Root" 75).
+        Skill("exponents", "Exponents", ("integer_ops",), (86,)),
+        Skill("square_roots", "Square roots", ("exponents",), (75,)),
+        # Algebra 1: linear inequalities (BKT, no ASSISTments data).
+        Skill("one_step_ineq", "One-step inequalities", ("one_step_mul",), ()),
+        Skill("two_step_ineq", "Two-step inequalities", ("one_step_ineq", "two_step"), ()),
+        # Algebra 2: polynomials (BKT).
+        Skill("multiply_binomials", "Multiplying binomials", ("distributive",), ()),
+        Skill("square_binomial", "Squaring a binomial", ("multiply_binomials",), ()),
         # Algebra 2: quadratic equations (BKT, no ASSISTments mapping).
         Skill("quad_square_root", "Solving x² = k", ("one_step_mul",), ()),
         Skill("quad_factored", "Zero-product property", ("one_step_add",), ()),
-        Skill("quad_factor_solve", "Solving by factoring", ("quad_factored",), ()),
+        Skill("quad_factor_solve", "Solving by factoring", ("quad_factored", "multiply_binomials"), ()),
     ]
 }
 

@@ -2,14 +2,16 @@ import pytest
 from sympy import Eq, solve
 
 from app.courses import CONCEPTS, COURSES, course_of
-from app.grader import X, parse_math
+from app.grader import X, inequality_solutions, parse_inequality, parse_math
 from app.recommend import is_unlocked, recommend
 from app.skills import SKILLS, topological_order
 
 
 def value(line: str):
     """A worked-example line as something comparable: the solution set of an
-    equation (or of several joined by "or"), or the expression itself."""
+    equation (or of several joined by "or"), of an inequality, or the expression itself."""
+    if any(op in line for op in "<>"):
+        return ("ineq", inequality_solutions(*parse_inequality(line)))
     if "=" in line:
         sols = set()
         for eq in line.split(" or "):
@@ -31,12 +33,14 @@ def test_worked_example_every_line_is_equivalent(skill):
 @pytest.mark.parametrize("skill", SKILLS)
 def test_worked_example_ends_in_simplest_answer(skill):
     last = CONCEPTS[skill].example[-1].replace(" ", "")
-    if "=" in CONCEPTS[skill].example[0]:
+    if any(op in last for op in "<>"):
+        assert last.startswith("x") and parse_math(last.lstrip("x<>=")).is_number, skill
+    elif "=" in CONCEPTS[skill].example[0]:
         for part in last.split("or"):  # "x=7orx=-7" for two solutions
             assert part.startswith("x=") and parse_math(part[2:]).is_number, skill
     else:
-        from app.grader import is_simplest_linear
-        assert is_simplest_linear(last), skill
+        from app.grader import is_simplest_polynomial
+        assert is_simplest_polynomial(last), skill
 
 
 def test_courses_cover_every_skill_once_in_teaching_order():

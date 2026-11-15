@@ -106,6 +106,34 @@ export default function Dashboard() {
                 ))}
               </dl>
 
+              <h3 className="mt-5 text-sm font-semibold">Units</h3>
+              <ul className="mt-2 divide-y divide-slate-200 dark:divide-slate-800">
+                {c.units_progress.map((u) => (
+                  <li key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm">
+                    <span className="min-w-[12rem] flex-1">{u.name}</span>
+                    <span className="w-28 text-slate-500 tabular-nums dark:text-slate-400">
+                      {u.mastered}/{u.skills} mastered
+                    </span>
+                    <span
+                      className="h-2 w-32 rounded-full bg-slate-200 dark:bg-slate-700"
+                      role="progressbar"
+                      aria-label={`${u.name} average mastery`}
+                      aria-valuenow={Math.round(u.average_mastery * 100)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <span
+                        className={`block h-full rounded-full ${u.mastered === u.skills ? "bg-emerald-500" : "bg-sky-500"}`}
+                        style={{ width: pct(u.average_mastery) }}
+                      />
+                    </span>
+                    <Link href={`/courses/${c.id}/practice?unit=${u.id}`} className="text-sky-700 underline dark:text-sky-300">
+                      Practice unit
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
               <details className="mt-4">
                 <summary className="cursor-pointer text-sm font-medium">Skill breakdown</summary>
                 <div className="mt-4 space-y-5">

@@ -232,3 +232,19 @@ def test_quadratic_hints_are_checked_against_both_solutions():
     validate_current(QUAD, "(x + 3)(x - 2) = 0")
     with pytest.raises(InvalidInput):
         validate_current(QUAD, "(x + 3)(x + 2) = 0")
+
+
+INEQ = Problem("two_step_ineq:1", "two_step_ineq", "inequality", "Solve the inequality:", "-2x + 3 <= 7", "x >= -2")
+
+
+def test_inequality_hints():
+    assert check_hint(INEQ, INEQ.expression, P("Subtract 3 from both sides.", "-2x <= 4")) == []
+    # Forgetting to flip the sign is caught as not equivalent.
+    assert [i.code for i in check_hint(INEQ, "-2x <= 4", P("Divide by -2.", "x <= -2"))] == ["not_equivalent"]
+    # Writing the final answer is a leak, in either order.
+    assert "leak_step" in [i.code for i in check_hint(INEQ, "-2x <= 4", P("Divide by -2 and flip.", "x >= -2"))]
+    assert leaks_answer(INEQ, "so x >= -2") and leaks_answer(INEQ, "which means -2 <= x")
+    assert not leaks_answer(INEQ, "divide both sides by -2")
+    validate_current(INEQ, "-2x <= 4")
+    with pytest.raises(InvalidInput):
+        validate_current(INEQ, "-2x >= 4")

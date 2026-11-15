@@ -25,7 +25,15 @@ import anthropic
 from pydantic import BaseModel, Field
 from sympy import Eq, expand, solve
 
-from .grader import X, InvalidInput, answer_values, is_simplest_linear, parse_math
+from .grader import (
+    X,
+    InvalidInput,
+    answer_values,
+    inequality_solutions,
+    is_simplest_polynomial,
+    parse_inequality,
+    parse_math,
+)
 from .problems import Problem
 from .skills import SKILLS
 
@@ -100,9 +108,17 @@ def _same_text(a: str, b: str) -> bool:
 def leaks_answer(problem: Problem, text: str) -> bool:
     """Does free text state the final answer? Deliberately strict: a false
     alarm only costs a retry, a miss gives the answer away."""
-    raw = text.replace("−", "-").lower()
+    raw = text.replace("−", "-").replace("≤", "<=").replace("≥", ">=").lower()
     if problem.kind == "simplify":
         return problem.answer.replace(" ", "").lower() in raw.replace(" ", "")
+    if problem.kind == "inequality":
+        # "x >= -2" or the same thing written backwards, "-2 <= x".
+        t = re.sub(r"\s*(<=|>=|<|>)\s*", r"\1", raw)
+        _, op, value = problem.answer.split()
+        flipped = {"<": ">", ">": "<", "<=": ">=", ">=": "<="}[op]
+        v = re.escape(value)
+        return bool(re.search(rf"(?<![\w)])x{re.escape(op)}{v}(?!\d|[/.]\d)", t)
+                    or re.search(rf"(?<![\d.]){v}{re.escape(flipped)}x(?![\w(])", t))
     # Remove spaces only around "=", keeping word boundaries, so "so x = 4" -> "so x=4"
     # while "8x = 0" -> "8x=0" still shows the 8 in front of x.
     t = re.sub(r"\s*=\s*", "=", raw)
@@ -133,7 +149,15 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
         return errors  # describing the operation without writing the step is allowed
 
     try:
-        if problem.kind == "solve":
+        if problem.kind == "inequality":
+            lhs, op, rhs = parse_inequality(step)
+            if inequality_solutions(lhs, op, rhs) != inequality_solutions(*parse_inequality(problem.answer)):
+                errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original inequality."))
+            elif _same_text(step, current):
+                errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
+            elif (lhs == X and not rhs.has(X)) or (rhs == X and not lhs.has(X)):
+                errors.append(HintIssue("leak_step", "The next step reveals the final answer; leave next_step empty instead."))
+        elif problem.kind == "solve":
             lhs, rhs = _split_equation(step)
             cur_l, cur_r = _split_equation(current)
             if _solutions(lhs, rhs) != _answers(problem):
@@ -151,7 +175,7 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
                 errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original expression."))
             elif _same_text(step, current):
                 errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
-            elif is_simplest_linear(step):
+            elif is_simplest_polynomial(step):
                 errors.append(HintIssue("leak_step", "The next step is the final answer; leave next_step empty instead."))
     except InvalidInput as e:
         errors.append(HintIssue("unparseable", f"next_step '{step}' couldn't be parsed ({e}). Write ONE equation or "
@@ -162,7 +186,10 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
 def validate_current(problem: Problem, current: str) -> None:
     """The student's current step must be valid math equivalent to the problem.
     Raises InvalidInput otherwise (the API turns that into a 400)."""
-    if problem.kind == "solve":
+    if problem.kind == "inequality":
+        if inequality_solutions(*parse_inequality(current)) != inequality_solutions(*parse_inequality(problem.answer)):
+            raise InvalidInput("current step is not equivalent to the problem")
+    elif problem.kind == "solve":
         if _solutions(*_split_equation(current)) != _answers(problem):
             raise InvalidInput("current step is not equivalent to the problem")
     elif expand(parse_math(current) - answer_values(problem)[0]) != 0:
@@ -181,6 +208,12 @@ FALLBACK_HINTS = {
     "vars_both_sides": "Move all x terms to one side and all numbers to the other, then simplify.",
     "parentheses": "Start by distributing (or divide both sides by the number outside the parentheses).",
     "multi_step": "Distribute first, combine like terms on each side, then collect x terms on one side.",
+    "exponents": "Work out each power first. A minus sign outside parentheses is applied after the power.",
+    "square_roots": "Ask which number multiplied by itself gives the number under the root.",
+    "one_step_ineq": "Undo the operation on x. If you multiply or divide by a negative number, flip the sign.",
+    "two_step_ineq": "Move the constant term first, then divide by the coefficient of x, flipping the sign if it is negative.",
+    "multiply_binomials": "Multiply every term in the first parentheses by every term in the second, then combine like terms.",
+    "square_binomial": "Write the square as the binomial times itself, multiply out, and combine the two middle terms.",
     "quad_square_root": "Get x squared by itself, then take the square root of both sides. Remember the negative root.",
     "quad_factored": "If a product is zero, one of the factors must be zero. Set each factor equal to zero.",
     "quad_factor_solve": "Look for two numbers that multiply to the constant term and add to the x coefficient.",
@@ -225,7 +258,10 @@ Rules:
   (for example "x = 4", a fully simplified expression, or the final number), set "next_step"
   to "" and only describe the operation in "hint".
 - "next_step" must be ONE equation or expression, never two joined by "or". Write powers as x^2.
-- Quadratic equations have two solutions; never state either of them."""
+- Quadratic equations have two solutions; never state either of them.
+- For an inequality, "next_step" is ONE inequality using <, >, <= or >=. Remember that multiplying or
+  dividing by a negative number flips the sign.
+- Write square roots as sqrt(49)."""
 
 
 def _user_prompt(problem: Problem, current: str, rejections: list[str]) -> str:

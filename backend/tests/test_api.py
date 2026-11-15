@@ -170,12 +170,17 @@ def test_join_and_dashboard_summary(client):
     assert client.post("/users/c1/courses/calculus").status_code == 404
     mine = client.get("/users/c1/courses").json()
     assert [c["id"] for c in mine] == ["algebra_1"]
-    assert mine[0]["summary"] == {"skills": 6, "mastered": 0, "average_mastery": 0.0, "attempts": 0, "correct": 0}
+    client.post("/users/c1/courses/pre_algebra")  # joined later, but listed first (curriculum order)
+    assert [c["id"] for c in client.get("/users/c1/courses").json()] == ["pre_algebra", "algebra_1"]
+    assert mine[0]["summary"] == {"skills": 8, "mastered": 0, "average_mastery": 0.0, "attempts": 0, "correct": 0}
+    assert [u["id"] for u in mine[0]["units_progress"]] == ["one_step", "multi_step_eq", "inequalities"]
+    assert mine[0]["units_progress"][0] == {"id": "one_step", "name": "One-step equations", "skills": 2,
+                                            "mastered": 0, "average_mastery": 0.0}
 
 
 def test_course_filtered_mastery_and_next(client):
     m = client.get("/users/c2/mastery", params={"course": "algebra_1"}).json()
-    assert [s["id"] for s in m["skills"]][0] == "one_step_add" and len(m["skills"]) == 6
+    assert [s["id"] for s in m["skills"]][0] == "one_step_add" and len(m["skills"]) == 8
     assert m["recommended"] == "one_step_add"
     assert m["skills"][0]["prerequisites"] == []  # integer_ops is in another course
     p = client.get("/users/c2/next", params={"course": "algebra_1"}).json()
@@ -184,4 +189,20 @@ def test_course_filtered_mastery_and_next(client):
     assert client.get("/users/c2/next", params={"course": "algebra_1", "skill": "distributive"}).status_code == 404
     r = client.post("/users/c2/attempts", params={"course": "algebra_1"},
                     json={"problem_id": p["id"], "answer": answer_of(p["id"])}).json()
-    assert r["mastery"]["course"] == "algebra_1" and len(r["mastery"]["skills"]) == 6
+    assert r["mastery"]["course"] == "algebra_1" and len(r["mastery"]["skills"]) == 8
+
+
+def test_unit_practice(client):
+    m = client.get("/users/u1/mastery", params={"course": "algebra_1", "unit": "inequalities"}).json()
+    assert [s["id"] for s in m["skills"]] == ["one_step_ineq", "two_step_ineq"]
+    assert m["unit"] == {"id": "inequalities", "name": "Linear inequalities"}
+    assert m["recommended"] == "one_step_ineq"
+    p = client.get("/users/u1/next", params={"course": "algebra_1", "unit": "inequalities"}).json()
+    assert p["skill"] == "one_step_ineq" and p["kind"] == "inequality"
+    r = client.post("/users/u1/attempts", params={"course": "algebra_1", "unit": "inequalities"},
+                    json={"problem_id": p["id"], "answer": answer_of(p["id"])}).json()
+    assert r["correct"] and [s["id"] for s in r["mastery"]["skills"]] == ["one_step_ineq", "two_step_ineq"]
+    # A unit from another course, or a skill outside the unit, is rejected.
+    assert client.get("/users/u1/next", params={"course": "algebra_1", "unit": "quadratics"}).status_code == 404
+    assert client.get("/users/u1/next", params={"unit": "inequalities", "skill": "two_step"}).status_code == 404
+    assert client.get("/users/u1/mastery", params={"unit": "nope"}).status_code == 404

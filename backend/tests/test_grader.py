@@ -1,6 +1,6 @@
 import pytest
 
-from app.grader import InvalidInput, grade, is_simplest_linear, parse_math
+from app.grader import InvalidInput, grade, is_simplest_polynomial, parse_math
 from app.problems import Problem
 
 SOLVE = Problem("t:1", "two_step", "solve", "Solve for x:", "3x + 5 = 17", "4")
@@ -89,5 +89,38 @@ def test_rejects_unsafe_or_broken_input(evil):
         ("3(x - 4)", False), ("0x + 5", False), ("x + 1 + 1", False),
     ],
 )
-def test_is_simplest_linear(text, expected):
-    assert is_simplest_linear(text) is expected
+def test_is_simplest_polynomial(text, expected):
+    assert is_simplest_polynomial(text) is expected
+
+
+INEQ = Problem("i:1", "two_step_ineq", "inequality", "Solve the inequality:", "-2x + 3 <= 7", "x >= -2")
+ROOTS = Problem("r:1", "square_roots", "evaluate", "Evaluate:", "sqrt(49) + sqrt(16)", "11")
+
+
+@pytest.mark.parametrize("answer", ["x >= -2", "-2 <= x", "x ≥ -2", "x>=-2"])
+def test_inequality_correct_forms(answer):
+    assert grade(INEQ, answer).status == "correct"
+
+
+def test_inequality_feedback():
+    assert "direction" in grade(INEQ, "x <= -2").message      # forgot to flip
+    assert "included" in grade(INEQ, "x > -2").message        # < vs <=
+    assert grade(INEQ, "x >= -4/2").status == "not_simplified"
+    assert grade(INEQ, "x = -2").status == "invalid"
+    assert grade(INEQ, "x >= 5").status == "incorrect"
+
+
+def test_square_roots_and_powers():
+    assert grade(ROOTS, "11").correct
+    assert grade(ROOTS, "√121").status == "not_simplified"
+    assert grade(ROOTS, "sqrt(121)").status == "not_simplified"
+    for evil in ["sqrt", "sqrtt(4)", "s(4)", "__import__('os')"]:
+        assert grade(ROOTS, evil).status == "invalid"
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [("x^2 + 5x + 6", True), ("-2x^2 - x", True), ("x^2 + 2x + 3x + 6", False), ("x^2 + x^2", False), ("(x + 2)(x + 3)", False)],
+)
+def test_polynomial_simplest_form(text, expected):
+    assert is_simplest_polynomial(text) is expected

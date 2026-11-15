@@ -16,7 +16,8 @@ Endpoints:
     GET  /courses/{course_id}           one course with its units and concept lessons
     POST /users/{user_id}/courses/{id}  join a course (idempotent)
     GET  /users/{user_id}/courses       joined courses with a mastery summary each
-Mastery and next-problem take an optional ?course= to restrict to one course.
+Mastery, next-problem and attempts take an optional ?course= (or ?unit=) to
+restrict to one course (or one unit of a course).
 
 Problems sent to the client never include the answer; grading happens here by
 regenerating the problem from its id.
@@ -34,7 +35,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from . import db
-from .courses import CONCEPTS, COURSES
+from .courses import CONCEPTS, COURSES, UNITS
 from .grader import InvalidInput, grade, normalize
 from .hints import ClaudeHintLLM, HintConfigError, generate_hint, validate_current
 from .mastery import CombinedMastery
@@ -73,7 +74,12 @@ def _problem_out(problem) -> dict:
     }
 
 
-def _course_skills(course_id: str | None) -> list[str] | None:
+def _scope_skills(course_id: str | None, unit_id: str | None = None) -> list[str] | None:
+    """Skills of a unit (if given) or a course (if given), else None = all skills."""
+    if unit_id is not None:
+        if unit_id not in UNITS or (course_id is not None and UNITS[unit_id][0] != course_id):
+            raise HTTPException(404, f"unknown unit: {unit_id}")
+        return list(UNITS[unit_id][1].skills)
     if course_id is None:
         return None
     if course_id not in COURSES:
@@ -81,10 +87,10 @@ def _course_skills(course_id: str | None) -> list[str] | None:
     return COURSES[course_id].skills
 
 
-def _mastery_out(app: FastAPI, user_id: str, course_id: str | None = None) -> dict:
-    """Mastery for all skills, or only one course's skills (then prerequisites
-    and unlocking only consider skills inside that course; see recommend.py)."""
-    within = _course_skills(course_id)
+def _mastery_out(app: FastAPI, user_id: str, course_id: str | None = None, unit_id: str | None = None) -> dict:
+    """Mastery for all skills, or only one course's / unit's skills (then
+    prerequisites and unlocking only consider skills inside that scope; see recommend.py)."""
+    within = _scope_skills(course_id, unit_id)
     history = db.kt_history(app.state.db_path, user_id)
     mastery = app.state.mastery_model.mastery(history)
     attempts = Counter(skill for skill, _ in history)
@@ -92,6 +98,7 @@ def _mastery_out(app: FastAPI, user_id: str, course_id: str | None = None) -> di
     return {
         "user_id": user_id,
         "course": course_id,
+        "unit": {"id": unit_id, "name": UNITS[unit_id][1].name} if unit_id else None,
         "threshold": MASTERY_THRESHOLD,
         "recommended": recommend(mastery, within),
         "skills": [
@@ -182,9 +189,12 @@ def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) ->
     @app.get("/users/{user_id}/courses")
     def my_courses(request: Request, user_id: str = UserId):
         out = []
-        for course_id, joined_at in db.joined_courses(request.app.state.db_path, user_id):
+        joined = db.joined_courses(request.app.state.db_path, user_id)
+        order = list(COURSES)  # show courses in curriculum order, not join order
+        for course_id, joined_at in sorted(joined, key=lambda j: order.index(j[0])):
             m = _mastery_out(request.app, user_id, course_id)
             skills = m["skills"]
+            by_id = {s["id"]: s for s in skills}
             out.append({
                 **_course_out(COURSES[course_id]),
                 "joined_at": joined_at,
@@ -195,28 +205,51 @@ def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) ->
                     "attempts": sum(s["attempts"] for s in skills),
                     "correct": sum(s["correct"] for s in skills),
                 },
+                # Per-unit progress for the dashboard: how many of the unit's skills are mastered.
+                "units_progress": [
+                    {
+                        "id": u.id,
+                        "name": u.name,
+                        "skills": len(u.skills),
+                        "mastered": sum(by_id[s]["mastered"] for s in u.skills),
+                        "average_mastery": round(sum(by_id[s]["mastery"] for s in u.skills) / len(u.skills), 4),
+                    }
+                    for u in COURSES[course_id].units
+                ],
                 "mastery": m,
             })
         return out
 
     @app.get("/users/{user_id}/mastery")
-    def get_mastery(request: Request, user_id: str = UserId, course: str | None = Query(None)):
-        return _mastery_out(request.app, user_id, course)
+    def get_mastery(
+        request: Request, user_id: str = UserId, course: str | None = Query(None), unit: str | None = Query(None)
+    ):
+        return _mastery_out(request.app, user_id, course, unit)
 
     @app.get("/users/{user_id}/next")
     def next_problem(
-        request: Request, user_id: str = UserId, skill: str | None = Query(None), course: str | None = Query(None)
+        request: Request,
+        user_id: str = UserId,
+        skill: str | None = Query(None),
+        course: str | None = Query(None),
+        unit: str | None = Query(None),
     ):
-        within = _course_skills(course)
+        within = _scope_skills(course, unit)
         if skill is None:
-            skill = _mastery_out(request.app, user_id, course)["recommended"]
+            skill = _mastery_out(request.app, user_id, course, unit)["recommended"]
         elif skill not in SKILLS or (within is not None and skill not in within):
             raise HTTPException(404, f"unknown skill: {skill}")
         # A fresh random seed per request; the seed is part of the problem id.
         return _problem_out(generate_problem(skill, random.randrange(10**9)))
 
     @app.post("/users/{user_id}/attempts")
-    def submit(body: AttemptIn, request: Request, user_id: str = UserId, course: str | None = Query(None)):
+    def submit(
+        body: AttemptIn,
+        request: Request,
+        user_id: str = UserId,
+        course: str | None = Query(None),
+        unit: str | None = Query(None),
+    ):
         try:
             problem = problem_from_id(body.problem_id)
         except ValueError:
@@ -228,7 +261,7 @@ def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) ->
             "correct": result.correct,
             "message": result.message,
             "counts_for_mastery": first,
-            "mastery": _mastery_out(request.app, user_id, course),
+            "mastery": _mastery_out(request.app, user_id, course, unit),
         }
 
     @app.post("/users/{user_id}/hints")

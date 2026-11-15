@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from math import gcd
 from tokenize import TokenError  # raised for unbalanced parentheses like "3(x"
 
-from sympy import Add, Integer, Mul, Pow, Symbol, expand, nan, nsimplify, oo, zoo
+from sympy import Add, Integer, Mul, Pow, Rel, Symbol, expand, nan, nsimplify, oo, solve_univariate_inequality, sqrt, zoo
 from sympy.core.sympify import SympifyError
 from sympy.parsing.sympy_parser import (
     convert_xor,
@@ -34,6 +34,7 @@ MAX_INPUT_LEN = 60
 MAX_EXPONENT = 4
 _ALLOWED = re.compile(r"^[0-9x+\-*/^().=\s]+$")
 _POWER = re.compile(r"\^\s*(\d+)")
+_INEQUALITY = re.compile(r"(<=|>=|<|>)")
 # implicit multiplication lets students type "3x" and "2(x+1)"; convert_xor reads ^ as a power.
 _TRANSFORMS = standard_transformations + (implicit_multiplication_application, convert_xor)
 
@@ -55,7 +56,10 @@ class GradeResult:
 def normalize(text: str) -> str:
     """Map look-alike characters students paste (−, ×, ·, ÷, X) to ASCII."""
     table = str.maketrans({"−": "-", "–": "-", "×": "*", "·": "*", "÷": "/", "X": "x", "²": "^2"})
-    return text.translate(table).strip()
+    text = text.translate(table).replace("≤", "<=").replace("≥", ">=")
+    # "√49" -> "sqrt(49)", "√(x)" -> "sqrt(x)"
+    text = re.sub(r"√\s*(\d+)", r"sqrt(\1)", text).replace("√", "sqrt")
+    return text.strip()
 
 
 def _safe_powers(text: str) -> bool:
@@ -73,12 +77,14 @@ def _safe_powers(text: str) -> bool:
 
 def parse_math(text: str, evaluate: bool = True):
     """Parse one side of an equation (no '='). Raises InvalidInput."""
-    if not text or len(text) > MAX_INPUT_LEN or not _ALLOWED.match(text) or "=" in text:
-        raise InvalidInput("Use only numbers, x, + - * / ^ and parentheses.")
+    # The only word allowed is the square-root function, and only as "sqrt(".
+    bare = text.replace("sqrt(", "(") if text else text
+    if not text or len(text) > MAX_INPUT_LEN or not _ALLOWED.match(bare) or "=" in text:
+        raise InvalidInput("Use only numbers, x, + - * / ^, sqrt( ) and parentheses.")
     if not _safe_powers(text):
         raise InvalidInput(f"Powers must be a whole number up to {MAX_EXPONENT}, like x^2.")
     try:
-        expr = parse_expr(text, local_dict={"x": X}, transformations=_TRANSFORMS, evaluate=evaluate)
+        expr = parse_expr(text, local_dict={"x": X, "sqrt": sqrt}, transformations=_TRANSFORMS, evaluate=evaluate)
     except (SyntaxError, TypeError, SympifyError, TokenError):
         raise InvalidInput("That expression couldn't be read.")
     if expr.has(zoo, oo, nan):  # e.g. division by zero
@@ -96,53 +102,62 @@ def _flat_factors(term) -> list:
     return out
 
 
-def _is_simple_term(term) -> tuple[bool, bool]:
-    """Return (is_simple, has_x) for one unevaluated term.
+def _x_power(f) -> int | None:
+    """x -> 1, x^2 -> 2 (whole-number powers of x), anything else -> None."""
+    if f == X:
+        return 1
+    if isinstance(f, Pow) and f.base == X and isinstance(f.exp, Integer) and f.exp >= 2:
+        return int(f.exp)
+    return None
 
-    Simple terms: 5, -5, 3/4, x, -x, 3x, -3x, (3/4)x. At most one numerator
-    integer, one integer denominator, one x, plus an optional leading -1.
+
+def _is_simple_term(term) -> tuple[bool, int]:
+    """Return (is_simple, degree) for one unevaluated term.
+
+    Simple terms: 5, -5, 3/4, x, -3x, (3/4)x, x^2, -2x^2. At most one numerator
+    integer, one integer denominator, one power of x, plus an optional leading -1.
     """
-    if term == X:
-        return True, True
+    if _x_power(term):
+        return True, _x_power(term)
     if isinstance(term, Integer):
-        return True, False
+        return True, 0
     if not isinstance(term, Mul):
-        return False, False
+        return False, 0
     factors = _flat_factors(term)
     if Integer(-1) in factors:  # "-12" in "3x - 12" parses as Mul(-1, 12)
         factors.remove(Integer(-1))
-    xs = [f for f in factors if f == X]
+    xs = [f for f in factors if _x_power(f)]
     nums = [f for f in factors if isinstance(f, Integer)]
     dens = [f for f in factors if isinstance(f, Pow) and isinstance(f.base, Integer) and f.exp == -1]
     if len(xs) + len(nums) + len(dens) != len(factors):  # something else, e.g. a nested sum
-        return False, False
+        return False, 0
     if len(xs) > 1 or len(nums) > 1 or len(dens) > 1:
-        return False, False
+        return False, 0
     if nums and nums[0] == 0:
-        return False, False
+        return False, 0
     if dens:
         num = abs(int(nums[0])) if nums else 1
         den = int(dens[0].base)
         if den <= 1 or gcd(num, den) != 1:  # 8/2 and 4/1 are not simplest form
-            return False, False
-    return True, bool(xs)
+            return False, 0
+    return True, (_x_power(xs[0]) if xs else 0)
 
 
-def is_simplest_linear(text: str) -> bool:
-    """True if text is written as (at most) one x term plus one constant."""
+def is_simplest_polynomial(text: str) -> bool:
+    """True if text is a sum of simple terms with at most one term per power
+    of x: "2x + 7" and "x^2 + 5x + 6" yes; "x + x + 7", "3(x - 4)" no."""
     expr = parse_math(text, evaluate=False)
-    x_terms = const_terms = 0
+    degrees = []
     for term in Add.make_args(expr):
-        ok, has_x = _is_simple_term(term)
+        ok, degree = _is_simple_term(term)
         if not ok:
             return False
-        x_terms += has_x
-        const_terms += not has_x
-    return x_terms <= 1 and const_terms <= 1
+        degrees.append(degree)
+    return len(degrees) == len(set(degrees))
 
 
 def _is_simplest_number(text: str) -> bool:
-    return is_simplest_linear(text) and not parse_math(text).has(X)
+    return is_simplest_polynomial(text) and not parse_math(text).has(X)
 
 
 # ---------- grading ----------
@@ -221,8 +236,47 @@ def _grade_expression(problem: Problem, text: str) -> GradeResult:
         return GradeResult("invalid", "Enter an expression, not an equation.")
     if not _equal(parse_math(text), parse_math(problem.answer)):
         return GradeResult("incorrect", "Not quite. Check your steps and try again.")
-    if not is_simplest_linear(text):
+    if not is_simplest_polynomial(text):
         return GradeResult("not_simplified", "Equivalent, but not fully simplified yet.")
+    return GradeResult("correct", "Correct!")
+
+
+# ---------- inequalities ----------
+
+def parse_inequality(text: str):
+    """"2x + 1 > 5" -> (lhs, ">", rhs). Raises InvalidInput."""
+    parts = [p.strip() for p in _INEQUALITY.split(text)]
+    if len(parts) != 3:
+        raise InvalidInput("Write an inequality with one of <, >, <= or >=.")
+    lhs, op, rhs = parts
+    return parse_math(lhs), op, parse_math(rhs)
+
+
+def inequality_solutions(lhs, op, rhs):
+    """The set of x that satisfy it, e.g. Interval.open(3, oo) for x > 3."""
+    return solve_univariate_inequality(Rel(lhs, rhs, op), X, relational=False)
+
+
+def _grade_inequality(problem: Problem, text: str) -> GradeResult:
+    if "=" in text.replace("<=", "").replace(">=", ""):
+        return GradeResult("invalid", "Use <, >, <= or >=, like x > 3.")
+    lhs, op, rhs = parse_inequality(text)
+    given = inequality_solutions(lhs, op, rhs)
+    expected = inequality_solutions(*parse_inequality(problem.answer))
+    if given != expected:
+        if {given.inf, given.sup} - {oo, -oo} == {expected.inf, expected.sup} - {oo, -oo}:
+            if (given.sup == oo) == (expected.sup == oo):
+                # Same boundary and direction: only < vs <= (or > vs >=) differs.
+                return GradeResult("incorrect", "Right boundary and direction, but check whether the boundary "
+                                                "itself is included (< or <=).")
+            # Same boundary, wrong direction: the classic "forgot to flip the sign" mistake.
+            return GradeResult("incorrect", "Right boundary, but check the direction of the inequality sign. "
+                                            "Did you multiply or divide by a negative number?")
+        return GradeResult("incorrect", "Not quite. Check your steps and try again.")
+    left, right = [p.strip() for p in _INEQUALITY.split(text)[::2]]
+    number = right if left == "x" else left if right == "x" else None
+    if number is None or not _is_simplest_number(number):
+        return GradeResult("not_simplified", "Right, but write it with x alone on one side, like x > 3.")
     return GradeResult("correct", "Correct!")
 
 
@@ -231,6 +285,8 @@ def grade(problem: Problem, student_input: str) -> GradeResult:
     try:
         if problem.kind == "simplify":
             return _grade_expression(problem, text)
+        if problem.kind == "inequality":
+            return _grade_inequality(problem, text)
         return _grade_value(problem, text)
     except InvalidInput as e:
         return GradeResult("invalid", str(e))

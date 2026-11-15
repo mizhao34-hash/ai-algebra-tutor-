@@ -3,7 +3,7 @@ import re
 import pytest
 from sympy import Eq, solve
 
-from app.grader import X, answer_values, grade, is_simplest_linear, parse_math
+from app.grader import X, answer_values, grade, inequality_solutions, is_simplest_polynomial, parse_inequality, parse_math
 from app.problems import generate_problem, problem_from_id
 from app.skills import SKILLS
 
@@ -23,7 +23,8 @@ def test_round_trip_id(skill):
 
 @pytest.mark.parametrize("skill", SKILLS)
 def test_not_all_the_same(skill):
-    assert len({generate_problem(skill, s).expression for s in range(50)}) > 20
+    # (x + a)^2 only has 18 possible problems; everything else has many more.
+    assert len({generate_problem(skill, s).expression for s in range(50)}) > (10 if skill == "square_binomial" else 20)
 
 
 @pytest.mark.parametrize("skill", SKILLS)
@@ -31,7 +32,9 @@ def test_answer_is_mathematically_right(skill):
     """Parse each problem with the grader's parser and check the stored answer."""
     for seed in SEEDS:
         p = generate_problem(skill, seed)
-        if p.kind == "solve":
+        if p.kind == "inequality":
+            assert inequality_solutions(*parse_inequality(p.expression)) == inequality_solutions(*parse_inequality(p.answer)), p
+        elif p.kind == "solve":
             lhs, rhs = p.expression.split("=")
             sols = solve(Eq(parse_math(lhs), parse_math(rhs)), X)
             assert sorted(sols) == sorted(answer_values(p)), p
@@ -44,7 +47,8 @@ def test_canonical_answer_grades_correct(skill):
     for seed in SEEDS:
         p = generate_problem(skill, seed)
         assert grade(p, p.answer).correct, p
-        assert all(is_simplest_linear(a.strip()) for a in p.answer.split(",")), p
+        if p.kind != "inequality":
+            assert all(is_simplest_polynomial(a.strip()) for a in p.answer.split(",")), p
 
 
 @pytest.mark.parametrize("skill", ["two_step", "vars_both_sides", "parentheses", "multi_step"])

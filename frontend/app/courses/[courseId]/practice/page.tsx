@@ -12,6 +12,7 @@ const PLACEHOLDER: Record<Problem["kind"], string> = {
   solve: "x = …",
   simplify: "e.g. 2x + 7",
   evaluate: "a number",
+  inequality: "e.g. x > 3 or x <= -2",
 };
 
 const FEEDBACK_STYLE: Record<GradeStatus, string> = {
@@ -27,16 +28,23 @@ const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 export default function PracticePage() {
   return (
     <Suspense>
-      <Practice />
+      <PracticeFromUrl />
     </Suspense>
   );
 }
 
-function Practice() {
+// Lesson links pass ?skill=... ("Practice this skill") or ?unit=... ("Practice this unit").
+// The key remounts Practice when they change, so its state starts fresh.
+function PracticeFromUrl() {
+  const params = useSearchParams();
+  const skill = params.get("skill") ?? "";
+  const unit = params.get("unit") ?? undefined;
+  return <Practice key={`${unit}|${skill}`} initialSkill={skill} unit={unit} />;
+}
+
+function Practice({ initialSkill, unit }: { initialSkill: string; unit?: string }) {
   const router = useRouter();
   const { courseId } = useParams<{ courseId: string }>();
-  // "Practice this skill" links from the Concept tab pass ?skill=...
-  const initialSkill = useSearchParams().get("skill") ?? "";
   const [userId, loaded] = useUserId();
   const [report, setReport] = useState<MasteryReport | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -58,8 +66,8 @@ function Practice() {
     setError(null);
     try {
       const [p, m] = await Promise.all([
-        api.nextProblem(uid, skill || undefined, courseId),
-        api.mastery(uid, courseId),
+        api.nextProblem(uid, skill || undefined, courseId, unit),
+        api.mastery(uid, courseId, unit),
       ]);
       setProblem(p);
       setReport(m);
@@ -71,7 +79,7 @@ function Practice() {
     } finally {
       setBusy(false);
     }
-  }, [courseId]);
+  }, [courseId, unit]);
 
   // New problem on first load and whenever the skill choice changes.
   useEffect(() => {
@@ -84,7 +92,7 @@ function Practice() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.submit(userId, problem.id, answer, courseId);
+      const r = await api.submit(userId, problem.id, answer, courseId, unit);
       setResult(r);
       setReport(r.mastery); // the backend returns updated mastery with every grade
     } catch (e) {
@@ -120,7 +128,19 @@ function Practice() {
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_18rem]">
       <section>
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {report?.unit ? (
+              <>
+                Unit practice: <span className="font-medium">{report.unit.name}</span> ·{" "}
+                <Link href={`/courses/${courseId}/practice`} className="underline">
+                  whole course
+                </Link>
+              </>
+            ) : (
+              "Practicing the whole course"
+            )}
+          </p>
           <label className="flex items-center gap-2 text-sm">
             Skill
             <select
@@ -156,7 +176,8 @@ function Practice() {
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{problem.skill_name}</p>
             {isRecommended && (
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Recommended: your lowest-mastery skill in this course whose prerequisites you&apos;ve mastered.
+                Recommended: your lowest-mastery skill in this {report?.unit ? "unit" : "course"} whose prerequisites
+                you&apos;ve mastered.
               </p>
             )}
             <p className="mt-4">{problem.prompt}</p>

@@ -49,9 +49,10 @@ COURSES: dict[str, Course] = {
             "pre_algebra",
             "Pre-Algebra",
             "Grades 6–8",
-            "Work with negative numbers and simplify algebraic expressions.",
+            "Work with negative numbers, exponents and roots, and simplify algebraic expressions.",
             (
                 Unit("integers", "Integers", ("integer_ops",)),
+                Unit("exponents_roots", "Exponents and square roots", ("exponents", "square_roots")),
                 Unit("expressions", "Algebraic expressions", ("combine_like_terms", "distributive")),
             ),
         ),
@@ -59,24 +60,31 @@ COURSES: dict[str, Course] = {
             "algebra_1",
             "Algebra 1",
             "Grades 8–9",
-            "Solve linear equations, from one step to many.",
+            "Solve linear equations and inequalities, from one step to many.",
             (
                 Unit("one_step", "One-step equations", ("one_step_add", "one_step_mul")),
-                Unit("multi_step", "Multi-step equations",
+                Unit("multi_step_eq", "Multi-step equations",
                      ("two_step", "vars_both_sides", "parentheses", "multi_step")),
+                Unit("inequalities", "Linear inequalities", ("one_step_ineq", "two_step_ineq")),
             ),
         ),
         Course(
             "algebra_2",
             "Algebra 2",
             "Grades 10–11",
-            "Solve quadratic equations, which usually have two solutions.",
+            "Multiply polynomials, then solve quadratic equations, which usually have two solutions.",
             (
+                Unit("polynomials", "Polynomials", ("multiply_binomials", "square_binomial")),
                 Unit("quadratics", "Quadratic equations", ("quad_square_root", "quad_factored", "quad_factor_solve")),
             ),
         ),
     ]
 }
+
+
+# Unit ids are unique across courses, so /next?unit=... is unambiguous.
+UNITS: dict[str, tuple[str, Unit]] = {u.id: (c.id, u) for c in COURSES.values() for u in c.units}
+assert len(UNITS) == sum(len(c.units) for c in COURSES.values()), "duplicate unit id"
 
 
 def course_of(skill: str) -> str:
@@ -188,6 +196,75 @@ CONCEPTS: dict[str, Concept] = {
         ("2(x + 3) + 4x = x + 21", "2x + 6 + 4x = x + 21", "6x + 6 = x + 21", "5x + 6 = 21", "5x = 15", "x = 3"),
         "Combining terms that are on opposite sides of the = sign. A term can only move across "
         "the = sign by doing the same operation to both sides.",
+    ),
+    "exponents": Concept(
+        "An exponent says how many times to multiply a number by itself: 3^4 = 3 × 3 × 3 × 3. "
+        "Exponents come before multiplication, division, addition and subtraction.",
+        (
+            "Work out each power first: multiply the base by itself as many times as the exponent says.",
+            "A negative base in parentheses is part of the power: (-3)^2 = (-3)(-3) = 9.",
+            "Without parentheses the minus sign comes after the power: -3^2 = -(3 × 3) = -9.",
+            "Then add or subtract the results.",
+        ),
+        ("-3^2 + 6", "-9 + 6", "-3"),
+        "Treating -3^2 like (-3)^2. Only the 3 is squared, so -3^2 = -9; (-3)^2 = 9.",
+    ),
+    "square_roots": Concept(
+        "The square root of a number is the value that, multiplied by itself, gives that number: "
+        "√49 = 7 because 7 × 7 = 49.",
+        (
+            "Find each square root by asking which number times itself gives the number under the root.",
+            "A number in front of the root multiplies it: 3√25 = 3 × 5.",
+            "Then add, subtract or multiply the results as usual.",
+        ),
+        ("sqrt(49) + sqrt(16)", "7 + 4", "11"),
+        "Adding under the root: √49 + √16 is 7 + 4 = 11, not √65.",
+    ),
+    "one_step_ineq": Concept(
+        "Solve an inequality like an equation, with one extra rule: multiplying or dividing both sides "
+        "by a negative number flips the inequality sign.",
+        (
+            "Undo the operation on x by doing the opposite to both sides.",
+            "If you multiply or divide by a negative number, flip the sign (< becomes >, <= becomes >=).",
+            "Write the answer with x alone, like x > 3.",
+        ),
+        ("-3x < 12", "-3x / (-3) > 12 / (-3)", "x > -4"),
+        "Forgetting to flip the sign: -3x < 12 gives x > -4, not x < -4. Check with x = 0: -3(0) < 12 is true, "
+        "and 0 > -4.",
+    ),
+    "two_step_ineq": Concept(
+        "Undo the constant term first, then divide by the coefficient of x, flipping the sign if it is negative.",
+        (
+            "Add or subtract to move the constant term to the other side.",
+            "Divide both sides by the coefficient of x.",
+            "If that coefficient is negative, flip the inequality sign.",
+        ),
+        ("-2x + 3 <= 7", "-2x <= 4", "x >= -2"),
+        "Flipping the sign when you add or subtract. Only multiplying or dividing by a negative flips it.",
+    ),
+    "multiply_binomials": Concept(
+        "To multiply (x + a)(x + b), multiply every term of the first by every term of the second "
+        "(First, Outer, Inner, Last), then combine like terms.",
+        (
+            "Multiply the first terms: x · x = x^2.",
+            "Multiply the outer and inner terms: x · b and a · x.",
+            "Multiply the last terms: a · b.",
+            "Combine the two x terms.",
+        ),
+        ("(x + 2)(x + 3)", "x^2 + 3x + 2x + 6", "x^2 + 5x + 6"),
+        "Multiplying only the first and last terms: (x + 2)(x + 3) is not x^2 + 6. "
+        "The middle terms 3x + 2x are needed.",
+    ),
+    "square_binomial": Concept(
+        "(x + a)^2 means (x + a)(x + a). Multiply it out: (x + a)^2 = x^2 + 2ax + a^2.",
+        (
+            "Write the square as a product: (x + a)(x + a).",
+            "Multiply every term by every term.",
+            "Combine the two middle terms, which are equal: ax + ax = 2ax.",
+        ),
+        ("(x - 3)^2", "(x - 3)(x - 3)", "x^2 - 3x - 3x + 9", "x^2 - 6x + 9"),
+        "Squaring each term separately: (x - 3)^2 is not x^2 + 9. The middle term -6x is missing, "
+        "and the last term is (-3)^2 = +9.",
     ),
     "quad_square_root": Concept(
         "When the equation is just x² equal to a number, take the square root of both sides. "
