@@ -65,13 +65,13 @@ LLMs make natural-language explanations cheap, but they introduce two risks for 
 
 ## 2. Background and related work
 
-> **TODO:** verify every citation against the original paper and add 2–4 recent papers on
-> LLM tutoring and LLM math errors that your program expects. Do not cite anything you
-> have not read.
+> The six references below were checked online on 2026-11-14 (DBLP, publisher and
+> proceedings pages). **TODO:** add 2–4 recent papers on LLM tutoring and LLM math errors;
+> do not cite anything you have not read.
 
 - **Bayesian Knowledge Tracing (BKT)** models each skill as a hidden binary state
   (learned / not learned) with four parameters: prior, learn, guess, slip (Corbett &
-  Anderson, 1994). We use the pyBKT library (Badrinath, Wang & Pardos, 2021).
+  Anderson, 1995). We use the pyBKT library (Badrinath, Wang & Pardos, 2021).
 - **Deep Knowledge Tracing (DKT)** replaces the per-skill HMM with a recurrent network over
   the whole interaction sequence, which lets it learn relationships between skills
   (Piech et al., 2015). Attention-based variants such as SAKT (Pandey & Karypis, 2019)
@@ -335,14 +335,14 @@ you made (course platform, AI tutor), and why.
 
 ## References
 
-> TODO: check every entry and format it in your program's required citation style.
+> Checked online on 2026-11-14. TODO: format in your program's required citation style.
 
-- Badrinath, A., Wang, F., & Pardos, Z. (2021). pyBKT: An accessible Python library of Bayesian Knowledge Tracing models. *Proceedings of the 14th International Conference on Educational Data Mining.*
-- Corbett, A. T., & Anderson, J. R. (1994). Knowledge tracing: Modeling the acquisition of procedural knowledge. *User Modeling and User-Adapted Interaction, 4*(4), 253–278.
+- Badrinath, A., Wang, F., & Pardos, Z. (2021). pyBKT: An accessible library of Bayesian knowledge tracing models. *Proceedings of the 14th International Conference on Educational Data Mining (EDM 2021).* arXiv:2105.00385.
+- Corbett, A. T., & Anderson, J. R. (1995). Knowledge tracing: Modeling the acquisition of procedural knowledge. *User Modeling and User-Adapted Interaction, 4*(4), 253–278. https://doi.org/10.1007/BF01099821
 - Feng, M., Heffernan, N., & Koedinger, K. (2009). Addressing the assessment challenge with an online system that tutors as it assesses. *User Modeling and User-Adapted Interaction, 19*(3), 243–266.
-- Meurer, A., et al. (2017). SymPy: Symbolic computing in Python. *PeerJ Computer Science, 3*, e103.
-- Pandey, S., & Karypis, G. (2019). A self-attentive model for knowledge tracing. *Proceedings of the 12th International Conference on Educational Data Mining.*
-- Piech, C., Bassen, J., Huang, J., Ganguli, S., Sahami, M., Guibas, L., & Sohl-Dickstein, J. (2015). Deep knowledge tracing. *Advances in Neural Information Processing Systems 28.*
+- Meurer, A., et al. (2017). SymPy: Symbolic computing in Python. *PeerJ Computer Science, 3*, e103. https://doi.org/10.7717/peerj-cs.103
+- Pandey, S., & Karypis, G. (2019). A self-attentive model for knowledge tracing. *Proceedings of the 12th International Conference on Educational Data Mining (EDM 2019)*, 384–389.
+- Piech, C., Bassen, J., Huang, J., Ganguli, S., Sahami, M., Guibas, L., & Sohl-Dickstein, J. (2015). Deep knowledge tracing. *Advances in Neural Information Processing Systems 28 (NIPS 2015)*, 505–513.
 
 ---
 
