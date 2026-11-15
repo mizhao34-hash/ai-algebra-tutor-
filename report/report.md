@@ -39,8 +39,15 @@ fill this gap with knowledge tracing (estimating mastery from answer histories) 
 step-level feedback.
 
 LLMs make natural-language explanations cheap, but they introduce two risks for tutoring:
-- **Incorrect mathematics.** A fluent but wrong step can teach a misconception.
+- **Incorrect mathematics.** A fluent but wrong step can teach a misconception. ChatGPT-generated
+  help failed quality checks on 32% of problems in one study of algebra and statistics hints
+  (Pardos & Bhandari, 2024), and LLMs prompted as tutors often give factually incorrect feedback
+  (Macina et al., 2023).
 - **Answer leakage.** A tutor that simply gives the answer removes the learning opportunity.
+  LLM tutors tend to reveal solutions too early (Macina et al., 2023), and in a field experiment
+  with high school math students, unrestricted GPT-4 access improved practice performance but
+  hurt later exam performance, an effect largely mitigated by a tutor designed not to give answers
+  away (Bastani et al., 2025).
 
 ### 1.2 Research questions
 - **RQ1.** Does a deep knowledge tracing model predict student performance better than the
@@ -65,9 +72,10 @@ LLMs make natural-language explanations cheap, but they introduce two risks for 
 
 ## 2. Background and related work
 
-> The six references below were checked online on 2026-11-14 (DBLP, publisher and
-> proceedings pages). **TODO:** add 2–4 recent papers on LLM tutoring and LLM math errors;
-> do not cite anything you have not read.
+> All references were checked online on 2026-11-14 (DBLP, publisher and proceedings pages).
+> **TODO before submitting: read at least the abstract, results and conclusion of Pardos &
+> Bhandari (2024), Macina et al. (2023), Bastani et al. (2025) and Gao et al. (2023), and confirm
+> the sentences citing them say what the papers say.** Wang et al. (2024) is optional.
 
 - **Bayesian Knowledge Tracing (BKT)** models each skill as a hidden binary state
   (learned / not learned) with four parameters: prior, learn, guess, slip (Corbett &
@@ -80,7 +88,22 @@ LLMs make natural-language explanations cheap, but they introduce two risks for 
   is a standard knowledge tracing benchmark (Feng, Heffernan & Koedinger, 2009).
 - **SymPy** is an open-source computer algebra system in Python (Meurer et al., 2017),
   used here for grading and verification.
-- **LLMs in tutoring.** TODO: summarize work on LLM tutors and their errors / answer leakage.
+- **LLMs as tutors.** Pardos & Bhandari (2024) found that ChatGPT-generated help on algebra and
+  statistics produced learning gains comparable to human-authored help, but 32% of generated help
+  failed quality checks; self-consistency (sampling several answers and keeping the majority)
+  reduced errors to nearly 0% for algebra. Macina et al. (2023) released MathDial, a tutoring
+  dialogue dataset, motivated by LLMs that solve problems well but tutor poorly, giving incorrect
+  feedback or revealing solutions. Bastani et al. (2025) showed in a field experiment that
+  answer-giving AI can harm learning, while a tutor with guardrails largely avoids this.
+  Wang et al. (2024) improve LLM responses to student math mistakes by modelling expert
+  remediation decisions. *(Optional; include only if you use it.)*
+- **Tools for LLM math.** Program-aided language models (PAL; Gao et al., 2023) have the LLM
+  write a program and let an interpreter compute the result, improving math accuracy.
+- **How this project differs.** These approaches improve the *likelihood* that an LLM is correct
+  (self-consistency, program execution, better prompts or data). This project instead treats
+  every student-facing math step as a claim to *check*: each hint step and each line of a tutor
+  walkthrough is verified with SymPy for equivalence, progress, and answer leakage before display,
+  with retries and safe fallbacks. The experiments measure what the check catches, and its cost.
 
 ---
 
@@ -337,12 +360,17 @@ you made (course platform, AI tutor), and why.
 
 > Checked online on 2026-11-14. TODO: format in your program's required citation style.
 
+- Bastani, H., Bastani, O., Sungu, A., Ge, H., Kabakcı, Ö., & Mariman, R. (2025). Generative AI without guardrails can harm learning: Evidence from high school mathematics. *Proceedings of the National Academy of Sciences, 122*, e2422633122.
 - Badrinath, A., Wang, F., & Pardos, Z. (2021). pyBKT: An accessible library of Bayesian knowledge tracing models. *Proceedings of the 14th International Conference on Educational Data Mining (EDM 2021).* arXiv:2105.00385.
 - Corbett, A. T., & Anderson, J. R. (1995). Knowledge tracing: Modeling the acquisition of procedural knowledge. *User Modeling and User-Adapted Interaction, 4*(4), 253–278. https://doi.org/10.1007/BF01099821
 - Feng, M., Heffernan, N., & Koedinger, K. (2009). Addressing the assessment challenge with an online system that tutors as it assesses. *User Modeling and User-Adapted Interaction, 19*(3), 243–266.
+- Gao, L., Madaan, A., Zhou, S., Alon, U., Liu, P., Yang, Y., Callan, J., & Neubig, G. (2023). PAL: Program-aided language models. *Proceedings of the 40th International Conference on Machine Learning (ICML 2023)*, PMLR 202, 10764–10799.
+- Macina, J., et al. (2023). MathDial: A dialogue tutoring dataset with rich pedagogical properties grounded in math reasoning problems. *Findings of the Association for Computational Linguistics: EMNLP 2023*, 5602–5621.
 - Meurer, A., et al. (2017). SymPy: Symbolic computing in Python. *PeerJ Computer Science, 3*, e103. https://doi.org/10.7717/peerj-cs.103
+- Pardos, Z. A., & Bhandari, S. (2024). ChatGPT-generated help produces learning gains equivalent to human tutor-authored help on mathematics skills. *PLOS ONE, 19*, e0304013.
 - Pandey, S., & Karypis, G. (2019). A self-attentive model for knowledge tracing. *Proceedings of the 12th International Conference on Educational Data Mining (EDM 2019)*, 384–389.
 - Piech, C., Bassen, J., Huang, J., Ganguli, S., Sahami, M., Guibas, L., & Sohl-Dickstein, J. (2015). Deep knowledge tracing. *Advances in Neural Information Processing Systems 28 (NIPS 2015)*, 505–513.
+- *(Optional)* Wang, R. E., Zhang, Q., Robinson, C., Loeb, S., & Demszky, D. (2024). Bridging the novice-expert gap via models of decision-making: A case study on remediating math mistakes. *Proceedings of NAACL 2024*, 2174–2199.
 
 ---
 
