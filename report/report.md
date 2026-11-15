@@ -1,6 +1,6 @@
 # AI Algebra Tutor: Adaptive Practice with Deep Knowledge Tracing and Verified LLM Feedback
 
-**MSCS Capstone Report** · Mingqi Zhao · Advisor: Bolei Zhou · November 14, 2026
+**MSCS Capstone Report** · Mingqi Zhao (mizhao34@g.ucla.edu) · Advisor: Bolei Zhou (bolei@cs.ucla.edu) · November 14, 2026
 
 > Draft written from the repository on 2026-11-14. Every number below comes from
 > `experiments/results.md` or `data/processed/stats.json`. Sections marked **TODO**
