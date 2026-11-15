@@ -1,12 +1,14 @@
 "use client";
 
-// Dashboard: the courses this user has joined and their mastery, with a
-// per-skill breakdown grouped by prerequisite level inside each course.
+// Dashboard: the courses this user has joined and their mastery (per unit, and
+// per skill grouped by prerequisite level), plus courses not started yet.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArrowRightIcon, BookIcon, CheckIcon } from "@/components/Icons";
 import { MasteryBar, StateChip, skillState } from "@/components/Mastery";
 import { api, type Course, type JoinedCourse, type SkillMastery } from "@/lib/api";
+import { btn, card, theme } from "@/lib/ui";
 import { saveUserId, useUserId } from "@/lib/user";
 
 /** Group skills by prerequisite depth: 0 = no prerequisites (inside this course),
@@ -50,109 +52,126 @@ export default function Dashboard() {
   if (!userId) return null;
   if (error)
     return (
-      <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+      <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
         {error}
       </div>
     );
   if (!courses)
     return <p className="text-slate-500">Loading… If the server was idle, it can take up to a minute to wake up.</p>;
 
+  const notStarted = catalog.filter((c) => !courses.some((j) => j.id === c.id));
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        Signed in as <span className="font-medium text-slate-700 dark:text-slate-200">{userId}</span> ·{" "}
-        <button onClick={switchUser} className="underline">
-          switch user
-        </button>{" "}
-        · a skill is mastered at a 70% predicted chance of answering correctly
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Welcome back, {userId}</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            A topic counts as mastered when you have a 70% predicted chance of answering it correctly.
+          </p>
+        </div>
+        <button onClick={switchUser} className={btn.subtle}>
+          Switch user
+        </button>
+      </div>
 
       {courses.length === 0 && (
         <p className="mt-6 text-slate-600 dark:text-slate-300">You haven&apos;t started a course yet. Pick one below.</p>
       )}
 
-      <div className="mt-6 space-y-8">
+      <div className="mt-6 space-y-6">
         {courses.map((c) => {
+          const t = theme(c.id);
           const s = c.summary;
           const names = Object.fromEntries(c.mastery.skills.map((k) => [k.id, k.name]));
           return (
-            <section key={c.id} className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">{c.name}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{c.grades}</p>
+            <section key={c.id} className={`${card} overflow-hidden`}>
+              <div className={`h-1.5 ${t.bar}`} aria-hidden />
+              <div className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-wider ${t.text}`}>{c.grades}</p>
+                    <h2 className="text-xl font-bold">{c.name}</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link href={`/courses/${c.id}`} className={btn.secondary}>
+                      <BookIcon /> Lesson
+                    </Link>
+                    <Link href={`/courses/${c.id}/practice`} className={btn.primary(t)}>
+                      Continue: {names[c.mastery.recommended]} <ArrowRightIcon />
+                    </Link>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link href={`/courses/${c.id}`} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                    Lesson
-                  </Link>
-                  <Link href={`/courses/${c.id}/practice`} className="rounded-md bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700">
-                    Practice {names[c.mastery.recommended]}
-                  </Link>
-                </div>
+
+                <dl className="mt-4 grid grid-cols-3 gap-3">
+                  {[
+                    ["Topics mastered", `${s.mastered} / ${s.skills}`],
+                    ["Problems tried", String(s.attempts)],
+                    ["First-try accuracy", s.attempts ? pct(s.correct / s.attempts) : "—"],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+                      <dd className="mt-1 text-2xl font-bold tabular-nums">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <h3 className="mt-6 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Units</h3>
+                <ul className="mt-2 space-y-2">
+                  {c.units_progress.map((u) => {
+                    const complete = u.mastered === u.skills;
+                    return (
+                      <li key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
+                        <span className="flex min-w-[12rem] flex-1 items-center gap-2 text-sm font-medium">
+                          {complete && <CheckIcon className="h-4 w-4 text-emerald-600" />}
+                          {u.name}
+                        </span>
+                        <span className="w-24 text-xs text-slate-500 tabular-nums dark:text-slate-400">
+                          {u.mastered}/{u.skills} mastered
+                        </span>
+                        <span
+                          className="h-2 w-32 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+                          role="progressbar"
+                          aria-label={`${u.name} average mastery`}
+                          aria-valuenow={Math.round(u.average_mastery * 100)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <span
+                            className={`block h-full rounded-full ${complete ? "bg-emerald-500" : t.bar}`}
+                            style={{ width: pct(u.average_mastery) }}
+                          />
+                        </span>
+                        <Link href={`/courses/${c.id}/practice?unit=${u.id}`} className={`${btn.subtle} ${t.text}`}>
+                          Practice <ArrowRightIcon className="h-3.5 w-3.5" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
 
-              <dl className="mt-4 grid grid-cols-3 gap-3">
-                {[
-                  ["Skills mastered", `${s.mastered} / ${s.skills}`],
-                  ["Problems tried", String(s.attempts)],
-                  ["First-try accuracy", s.attempts ? pct(s.correct / s.attempts) : "—"],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-md bg-slate-50 p-3 dark:bg-slate-950">
-                    <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
-                    <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-
-              <h3 className="mt-5 text-sm font-semibold">Units</h3>
-              <ul className="mt-2 divide-y divide-slate-200 dark:divide-slate-800">
-                {c.units_progress.map((u) => (
-                  <li key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm">
-                    <span className="min-w-[12rem] flex-1">{u.name}</span>
-                    <span className="w-28 text-slate-500 tabular-nums dark:text-slate-400">
-                      {u.mastered}/{u.skills} mastered
-                    </span>
-                    <span
-                      className="h-2 w-32 rounded-full bg-slate-200 dark:bg-slate-700"
-                      role="progressbar"
-                      aria-label={`${u.name} average mastery`}
-                      aria-valuenow={Math.round(u.average_mastery * 100)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    >
-                      <span
-                        className={`block h-full rounded-full ${u.mastered === u.skills ? "bg-emerald-500" : "bg-sky-500"}`}
-                        style={{ width: pct(u.average_mastery) }}
-                      />
-                    </span>
-                    <Link href={`/courses/${c.id}/practice?unit=${u.id}`} className="text-sky-700 underline dark:text-sky-300">
-                      Practice unit
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm font-medium">Skill breakdown</summary>
-                <div className="mt-4 space-y-5">
+              <details className="border-t border-slate-200 dark:border-slate-800">
+                <summary className="cursor-pointer px-5 py-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  Topic breakdown
+                </summary>
+                <div className="space-y-5 px-5 pb-5">
                   {byLevel(c.mastery.skills).map((level, i) => (
                     <div key={i}>
-                      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Level {i + 1}</h3>
+                      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Level {i + 1}</h4>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {level.map((k) => (
                           <div
                             key={k.id}
-                            className={`rounded-md border p-3 ${
-                              k.id === c.mastery.recommended ? "border-sky-500 ring-2 ring-sky-500/30" : "border-slate-200 dark:border-slate-800"
+                            className={`rounded-lg border p-3 ${
+                              k.id === c.mastery.recommended ? `${t.border} ring-2 ${t.ring}` : "border-slate-200 dark:border-slate-800"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-sm font-medium">{k.name}</h4>
+                              <h5 className="text-sm font-semibold">{k.name}</h5>
                               <StateChip state={skillState(k)} />
                             </div>
-                            <p className="mt-1 text-xl font-semibold tabular-nums">{pct(k.mastery)}</p>
+                            <p className="mt-1 text-xl font-bold tabular-nums">{pct(k.mastery)}</p>
                             <div className="mt-1">
                               <MasteryBar skill={k} threshold={c.mastery.threshold} />
                             </div>
@@ -180,26 +199,29 @@ export default function Dashboard() {
         })}
       </div>
 
-      {catalog.some((c) => !courses.some((j) => j.id === c.id)) && (
+      {notStarted.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-semibold">{courses.length ? "Other courses" : "Courses"}</h2>
+          <h2 className="text-lg font-bold">{courses.length ? "More courses" : "Courses"}</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {catalog
-              .filter((c) => !courses.some((j) => j.id === c.id))
-              .map((c) => (
-                <div key={c.id} className="flex flex-col rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold">{c.name}</h3>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      {c.grades}
-                    </span>
-                  </div>
+            {notStarted.map((c) => {
+              const t = theme(c.id);
+              return (
+                <div key={c.id} className={`${card} flex flex-col overflow-hidden`}>
+                  <div className={`h-1.5 ${t.bar}`} aria-hidden />
+                  <div className="flex flex-1 flex-col p-5">
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${t.text}`}>{c.grades}</p>
+                  <h3 className="text-lg font-bold">{c.name}</h3>
                   <p className="mt-2 flex-1 text-sm text-slate-600 dark:text-slate-300">{c.description}</p>
-                  <Link href={`/courses/${c.id}`} className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-sky-700">
-                    Start course
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    {c.units.length} units · {c.units.reduce((n, u) => n + u.skills.length, 0)} topics
+                  </p>
+                  <Link href={`/courses/${c.id}`} className={`mt-4 ${btn.primary(t)}`}>
+                    Start course <ArrowRightIcon />
                   </Link>
+                  </div>
                 </div>
-              ))}
+              );
+            })}
           </div>
         </section>
       )}

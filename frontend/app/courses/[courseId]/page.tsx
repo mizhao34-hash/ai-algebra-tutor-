@@ -5,12 +5,15 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArrowRightIcon, CheckIcon, ChevronDownIcon, PencilIcon, WarningIcon } from "@/components/Icons";
 import { api, type Course, type MasteryReport } from "@/lib/api";
 import { pretty } from "@/lib/math";
+import { btn, card, theme } from "@/lib/ui";
 import { useUserId } from "@/lib/user";
 
 export default function Lessons() {
   const { courseId } = useParams<{ courseId: string }>();
+  const t = theme(courseId);
   const [userId] = useUserId();
   const [course, setCourse] = useState<Course | null>(null);
   const [report, setReport] = useState<MasteryReport | null>(null);
@@ -35,98 +38,96 @@ export default function Lessons() {
   let topic = 0; // topics are numbered across units
   return (
     <div className="space-y-4">
-      <p className="text-slate-600 dark:text-slate-300">{course.description}</p>
       {course.units.map((unit, u) => {
         const done = unit.skills.filter((s) => mastered.has(s.id)).length;
+        const complete = done === unit.skills.length;
         return (
-          <details
-            key={unit.id}
-            open={unit.id === openUnit}
-            className="group rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
-              <span>
-                <span className="block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Unit {u + 1}
-                </span>
-                <span className="text-lg font-semibold">{unit.name}</span>
-                <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">
-                  {unit.skills.length} {unit.skills.length === 1 ? "topic" : "topics"}
-                </span>
+          <details key={unit.id} open={unit.id === openUnit} className={`group ${card} overflow-hidden`}>
+            <summary className="flex cursor-pointer list-none items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              <span
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                  complete ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200" : t.soft
+                }`}
+              >
+                {complete ? <CheckIcon className="h-5 w-5" /> : u + 1}
               </span>
-              <span className="flex items-center gap-3">
-                {report && (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      done === unit.skills.length
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
-                        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    }`}
-                  >
-                    {done}/{unit.skills.length} mastered
-                  </span>
-                )}
-                <span aria-hidden className="text-slate-400 transition-transform group-open:rotate-180">
-                  ▾
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Unit {u + 1} · {unit.skills.length} {unit.skills.length === 1 ? "topic" : "topics"}
                 </span>
+                <span className="block text-lg font-bold">{unit.name}</span>
               </span>
+              {report && (
+                <span className="hidden text-sm text-slate-600 tabular-nums sm:block dark:text-slate-300">
+                  {done}/{unit.skills.length} mastered
+                </span>
+              )}
+              <ChevronDownIcon className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
             </summary>
 
-            <div className="space-y-5 border-t border-slate-200 p-4 dark:border-slate-800">
+            <div className="divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800">
               {unit.skills.map((skill) => {
                 const c = skill.concept;
                 topic += 1;
                 if (!c) return null;
                 return (
-                  <article key={skill.id} id={skill.id}>
-                    <h3 className="text-lg font-semibold">
-                      {topic}. {skill.name}
+                  <article key={skill.id} id={skill.id} className="p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-bold">
+                        <span className={t.text}>{topic}.</span> {skill.name}
+                      </h3>
                       {mastered.has(skill.id) && (
-                        <span className="ml-2 align-middle text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                          ✓ mastered
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200">
+                          <CheckIcon className="h-3 w-3" /> Mastered
                         </span>
                       )}
-                    </h3>
-                    <p className="mt-2">{pretty(c.summary)}</p>
+                    </div>
+                    <p className="mt-2 text-slate-700 dark:text-slate-200">{pretty(c.summary)}</p>
 
-                    <h4 className="mt-4 text-sm font-semibold">Steps</h4>
-                    <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">
-                      {c.steps.map((step, i) => (
-                        <li key={i}>{pretty(step)}</li>
-                      ))}
-                    </ol>
-
-                    <h4 className="mt-4 text-sm font-semibold">Worked example</h4>
-                    <ol className="mt-1 space-y-1 rounded-md bg-slate-50 p-3 font-mono text-sm dark:bg-slate-950">
-                      {c.example.map((line, i) => (
-                        <li key={i} className={i === c.example.length - 1 ? "font-semibold" : ""}>
-                          <span className="mr-2 inline-block w-4 text-slate-400">{i === 0 ? "" : "→"}</span>
-                          {pretty(line)}
-                        </li>
-                      ))}
-                    </ol>
-
-                    <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-                      <span className="font-semibold">Common mistake: </span>
-                      {pretty(c.mistake)}
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Steps</h4>
+                        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
+                          {c.steps.map((step, i) => (
+                            <li key={i}>{pretty(step)}</li>
+                          ))}
+                        </ol>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Worked example
+                        </h4>
+                        <ol className="mt-2 space-y-1 rounded-lg bg-slate-50 p-3 font-mono text-sm dark:bg-slate-950">
+                          {c.example.map((line, i) => (
+                            <li key={i} className={i === c.example.length - 1 ? `font-bold ${t.text}` : ""}>
+                              <span className="mr-2 inline-block w-4 text-slate-400">{i === 0 ? "" : "→"}</span>
+                              {pretty(line)}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
                     </div>
 
-                    <Link
-                      href={`/courses/${courseId}/practice?skill=${skill.id}`}
-                      className="mt-3 inline-block text-sm font-medium text-sky-700 underline dark:text-sky-300"
-                    >
-                      Practice this topic
+                    <div className="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                      <WarningIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p>
+                        <span className="font-semibold">Common mistake: </span>
+                        {pretty(c.mistake)}
+                      </p>
+                    </div>
+
+                    <Link href={`/courses/${courseId}/practice?skill=${skill.id}`} className={`mt-4 ${btn.secondary}`}>
+                      <PencilIcon /> Practice this topic
                     </Link>
                   </article>
                 );
               })}
-
-              <Link
-                href={`/courses/${courseId}/practice?unit=${unit.id}`}
-                className="inline-block rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Practice this unit
-              </Link>
+              <div className={`flex flex-wrap items-center justify-between gap-3 p-5 ${t.soft}`}>
+                <p className="text-sm font-medium">Ready? Practice every topic in this unit, mixed together.</p>
+                <Link href={`/courses/${courseId}/practice?unit=${unit.id}`} className={btn.primary(t)}>
+                  Practice this unit <ArrowRightIcon />
+                </Link>
+              </div>
             </div>
           </details>
         );
