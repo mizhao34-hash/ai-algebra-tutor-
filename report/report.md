@@ -32,6 +32,12 @@ Algebra 1, Algebra 2), 8 units and 18 topics.
 ## 1. Introduction
 
 ### 1.1 Motivation
+This project started from my experience as a K-12 tutor. Many of the students I worked with who
+struggled most with algebra came from underrepresented minority groups, and they often had little
+access to one-on-one help outside class: when they got stuck at home, there was no one to show them
+the next step. I wanted to build a tool that lets these students learn algebra on their own, at
+their own pace, with help available whenever they need it.
+
 Practice is most useful when it targets what a student has not yet mastered, and help is
 most useful when it addresses the step a student is stuck on. Classroom teachers cannot
 provide either for every student at once. Intelligent tutoring systems have long tried to
@@ -334,7 +340,7 @@ answer" step.
    database on restart.
 
 ## 8. Future work
-- A classroom or user study measuring learning gains and how students use the tutor.
+- A study with the students who motivated this project, measuring learning gains and how they use the lessons and the tutor.
 - Training knowledge tracing on data that covers Algebra 2 topics, or fitting BKT
   parameters from the platform's own logs.
 - Checking the explanation text, for example by extracting and verifying every equation
@@ -346,7 +352,7 @@ answer" step.
 This project built and deployed an adaptive algebra tutor whose LLM features are constrained by a computer algebra system. On held-out ASSISTments students, DKT predicted performance better than BKT (test AUC 0.751 vs. 0.708), answering RQ1. For RQ2, verifying each hint step with SymPy removed every detectable answer leak from a weaker LLM (7.9% to 0%) at about 11% more model calls, while a stronger LLM rarely needed correction. For RQ3, multi-step tutor walkthroughs could be verified in the same way: all 40 shown walkthroughs passed every check. The main lesson is that LLMs become usable as math tutors when their mathematical claims are treated as claims to verify rather than as trusted output, but the verifier is itself a model that must be tested: in both LLM experiments, our own checker produced errors that only careful inspection of its outputs revealed.
 
 ## 10. Reflection
-The hardest part was not any single model but the joints between components. DKT was trained on ASSISTments skills, so connecting it to my own curriculum required a skill mapping, and some of the closest-named skills had almost no training data; I had to set a minimum-data rule and fall back to BKT where data did not exist. The experiments were also humbling: three bugs in my own verification pipeline, and a false alarm that made the tutor look worse than it was, only surfaced because I inspected individual outputs instead of trusting summary numbers. The scope grew during the project, from one unit of linear equations to a three-course platform with lessons and an AI tutor, because early testing showed that practice alone, without a place to learn concepts or ask questions, was not a usable learning experience. If I started again, I would plan the evaluation with real students from the beginning, since learning gains are the question this project cannot yet answer, and I would write tests for the verifier before running experiments with it.
+The hardest part was not any single model but the joints between components. DKT was trained on ASSISTments skills, so connecting it to my own curriculum required a skill mapping, and some of the closest-named skills had almost no training data; I had to set a minimum-data rule and fall back to BKT where data did not exist. The experiments were also humbling: three bugs in my own verification pipeline, and a false alarm that made the tutor look worse than it was, only surfaced because I inspected individual outputs instead of trusting summary numbers. The scope also grew during the project, from one unit of linear equations to a three-course platform with lessons and an AI tutor. This came from my original motivation: the students I tutored needed to be able to learn on their own, and practice problems alone are not enough for that. A student working alone also needs a place to learn the concepts and someone to ask when they are stuck. If I started again, I would plan an evaluation with the students who motivated this project from the beginning, since whether they actually learn more is the question this project cannot yet answer, and I would write tests for the verifier before running experiments with it.
 
 ---
 
