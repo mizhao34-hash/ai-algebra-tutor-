@@ -62,4 +62,4 @@ Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, aut
 - [x] Week 5: frontend (Next.js 14 + Tailwind: /practice, /dashboard; run: cd frontend && npm run dev, with the backend on :8000)
 - [x] Week 6: LLM hints + verification loop (backend/app/hints.py: Claude structured output, SymPy check, 3 retries, fallback; needs ANTHROPIC_API_KEY in .env)
 - [x] Week 7: experiments + deployment (exp 2 in results.md + experiments/hint_audit.md; live: https://ai-algebra-tutor-pi.vercel.app, API https://algebra-tutor-api.onrender.com; see DEPLOY.md)
-- [ ] Week 8: report + demo video
+- [ ] Week 8: report + demo video — report draft in report/report.md (TODOs: name, citations check, screenshots, conclusion, reflection); demo notes on Desktop
