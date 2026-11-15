@@ -5,3 +5,32 @@
 body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 }
+
+/* ---------- AI tutor walkthrough animations ---------- */
+@keyframes tutor-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+/* newly added part of a line: green glow that fades out */
+@keyframes tutor-added {
+  0%, 55% { background-color: rgb(52 211 153 / 0.45); }
+  100% { background-color: transparent; }
+}
+/* removed part of the previous line: struck through in red, then back to normal */
+@keyframes tutor-removed {
+  0%, 65% { color: rgb(225 29 72); text-decoration-color: rgb(225 29 72); }
+  100% { color: inherit; text-decoration-color: transparent; }
+}
+/* inequality sign flipping */
+@keyframes tutor-flip {
+  0% { transform: rotateY(0); }
+  50% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0); }
+}
+.tutor-fade-up { animation: tutor-fade-up 0.45s ease-out both; }
+.tutor-added { animation: tutor-added 2.2s ease-out both; border-radius: 4px; }
+.tutor-removed { animation: tutor-removed 2.2s ease-out both; text-decoration-line: line-through; text-decoration-thickness: 2px; }
+.tutor-flip { display: inline-block; animation: tutor-flip 0.7s ease-in-out 2; color: rgb(225 29 72); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) {
+  .tutor-fade-up, .tutor-added, .tutor-removed, .tutor-flip { animation: none; }
+}

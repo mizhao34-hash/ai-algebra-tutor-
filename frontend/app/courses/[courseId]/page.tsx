@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRightIcon, CheckIcon, ChevronDownIcon, PencilIcon, WarningIcon } from "@/components/Icons";
+import { useTutor } from "@/components/tutor/TutorProvider";
 import { api, type Course, type MasteryReport } from "@/lib/api";
 import { pretty } from "@/lib/math";
 import { btn, card, theme } from "@/lib/ui";
@@ -15,6 +16,7 @@ export default function Lessons() {
   const { courseId } = useParams<{ courseId: string }>();
   const t = theme(courseId);
   const [userId] = useUserId();
+  const tutor = useTutor();
   const [course, setCourse] = useState<Course | null>(null);
   const [report, setReport] = useState<MasteryReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,9 +126,18 @@ export default function Lessons() {
               })}
               <div className={`flex flex-wrap items-center justify-between gap-3 p-5 ${t.soft}`}>
                 <p className="text-sm font-medium">Ready? Practice every topic in this unit, mixed together.</p>
-                <Link href={`/courses/${courseId}/practice?unit=${unit.id}`} className={btn.primary(t)}>
-                  Practice this unit <ArrowRightIcon />
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => tutor.ask(`Explain this unit: ${unit.name}`, { mode: "explain_unit", unit: unit.id })}
+                    disabled={tutor.busy}
+                    className={btn.hint}
+                  >
+                    ✦ Explain this unit
+                  </button>
+                  <Link href={`/courses/${courseId}/practice?unit=${unit.id}`} className={btn.primary(t)}>
+                    Practice this unit <ArrowRightIcon />
+                  </Link>
+                </div>
               </div>
             </div>
           </details>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BookIcon, PencilIcon } from "@/components/Icons";
+import { useTutorPage } from "@/components/tutor/TutorProvider";
 import { api, type Course } from "@/lib/api";
 import { theme } from "@/lib/ui";
 import { useUserId } from "@/lib/user";
@@ -18,6 +19,7 @@ export default function CourseLayout({ children }: { children: React.ReactNode }
   const [course, setCourse] = useState<Course | null>(null);
   const [error, setError] = useState<string | null>(null);
   const t = theme(courseId);
+  useTutorPage({ course: courseId }); // the AI tutor knows which course you're in
 
   useEffect(() => {
     if (loaded && !userId) router.replace("/");

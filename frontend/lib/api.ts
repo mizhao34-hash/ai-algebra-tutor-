@@ -72,6 +72,25 @@ export type JoinedCourse = Course & {
   mastery: MasteryReport;
 };
 
+export type WalkthroughStep = { operation: string; result: string };
+export type Walkthrough = { problem: string; steps: WalkthroughStep[] };
+
+export type TutorRequest = {
+  messages: { role: "user" | "assistant"; content: string }[]; // recent conversation, oldest first
+  mode: "chat" | "selection" | "explain_unit";
+  course?: string;
+  unit?: string;
+  problem_id?: string; // the practice problem on screen: the tutor won't give its answer
+  selection?: string;  // highlighted text (mode "selection")
+};
+
+export type TutorReply = {
+  message: string;
+  walkthrough: Walkthrough | null; // every step verified by SymPy on the server
+  verified: boolean;
+  source: "llm" | "fallback";
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -91,7 +110,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* not JSON */
     }
-    throw new Error(res.status === 503 ? `Hints are unavailable: ${detail}` : `Server error ${res.status}: ${detail}`);
+    if (res.status === 429) throw new Error(detail); // rate limit: the message is meant for the student
+    throw new Error(res.status === 503 ? `AI help is unavailable: ${detail}` : `Server error ${res.status}: ${detail}`);
   }
   return res.json() as Promise<T>;
 }
@@ -126,6 +146,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ problem_id: problemId, answer }),
     }),
+
+  tutor: (userId: string, body: TutorRequest) =>
+    request<TutorReply>(`${user(userId)}/tutor`, { method: "POST", body: JSON.stringify(body) }),
 
   // `current` = the step the student is on (defaults to the problem itself).
   hint: (userId: string, problemId: string, current?: string) =>

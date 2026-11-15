@@ -12,6 +12,7 @@ Endpoints:
     GET  /users/{user_id}/next          a new problem (recommended skill, or ?skill=)
     POST /users/{user_id}/attempts      grade an answer, return updated mastery
     POST /users/{user_id}/hints         one verified next-step hint (LLM + SymPy)
+    POST /users/{user_id}/tutor         AI tutor chat with a verified, animated worked example
     GET  /courses                       course catalog
     GET  /courses/{course_id}           one course with its units and concept lessons
     POST /users/{user_id}/courses/{id}  join a course (idempotent)
@@ -25,6 +26,7 @@ regenerating the problem from its id.
 
 import os
 import random
+from typing import Literal
 from pathlib import Path as FsPath
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -38,6 +40,7 @@ from . import db
 from .courses import CONCEPTS, COURSES, UNITS
 from .grader import InvalidInput, grade, normalize
 from .hints import ClaudeHintLLM, HintConfigError, generate_hint, validate_current
+from .tutor import ClaudeTutorLLM, TutorContext, ask_tutor
 from .mastery import CombinedMastery
 from .problems import generate_problem, problem_from_id
 from .recommend import is_unlocked, recommend
@@ -53,6 +56,25 @@ UserId = Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")
 class AttemptIn(BaseModel):
     problem_id: str = Field(max_length=80)
     answer: str = Field(max_length=200)
+
+
+# Rate limits for the tutor chat: the site is public and every message costs API credit.
+TUTOR_PER_USER_PER_HOUR = int(os.environ.get("TUTOR_PER_USER_PER_HOUR", "30"))
+TUTOR_TOTAL_PER_HOUR = int(os.environ.get("TUTOR_TOTAL_PER_HOUR", "300"))
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class TutorIn(BaseModel):
+    messages: list[ChatMessage] = Field(default_factory=list, max_length=12)  # recent conversation, oldest first
+    mode: Literal["chat", "selection", "explain_unit"] = "chat"
+    course: str | None = Field(None, max_length=40)
+    unit: str | None = Field(None, max_length=40)
+    problem_id: str | None = Field(None, max_length=80)
+    selection: str | None = Field(None, max_length=300)
 
 
 class HintIn(BaseModel):
@@ -139,7 +161,7 @@ def _course_out(course, with_concepts: bool = False) -> dict:
     return out
 
 
-def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) -> FastAPI:
+def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None, tutor_llm=None) -> FastAPI:
     """Tests pass a temporary db and fakes; production uses env vars."""
 
     @asynccontextmanager
@@ -148,6 +170,7 @@ def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) ->
         db.init(app.state.db_path)
         app.state.mastery_model = mastery_model or CombinedMastery()  # loads the DKT checkpoint once
         app.state.hint_llm = hint_llm  # created on first hint request, so the app runs without an API key
+        app.state.tutor_llm = tutor_llm  # same, for the tutor chat
         yield
 
     app = FastAPI(title="AI Algebra Tutor", lifespan=lifespan)
@@ -286,6 +309,56 @@ def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) ->
         return {
             "hint": result.hint,
             "next_step": result.next_step,
+            "verified": result.verified,
+            "source": result.source,
+        }
+
+    @app.post("/users/{user_id}/tutor")
+    def tutor(body: TutorIn, request: Request, user_id: str = UserId):
+        state = request.app.state
+        if db.tutor_messages_last_hour(state.db_path, user_id) >= TUTOR_PER_USER_PER_HOUR:
+            raise HTTPException(429, "You've asked a lot of questions this hour. Please try again a bit later.")
+        if db.tutor_messages_last_hour(state.db_path) >= TUTOR_TOTAL_PER_HOUR:
+            raise HTTPException(429, "The tutor is very busy right now. Please try again a bit later.")
+        if body.course is not None and body.course not in COURSES:
+            raise HTTPException(404, f"unknown course: {body.course}")
+        if body.unit is not None and body.unit not in UNITS:
+            raise HTTPException(404, f"unknown unit: {body.unit}")
+        problem = None
+        if body.problem_id:
+            try:
+                problem = problem_from_id(body.problem_id)
+            except ValueError:
+                raise HTTPException(404, "unknown problem")
+
+        messages = [m.model_dump() for m in body.messages]
+        while messages and messages[0]["role"] != "user":  # the API needs a user turn first
+            messages.pop(0)
+        if body.mode == "explain_unit":
+            messages.append({"role": "user", "content": "Please explain this unit to me with an example."})
+        if not messages or messages[-1]["role"] != "user" or len(messages[-1]["content"]) > 500:
+            raise HTTPException(400, "The last message must be your question (up to 500 characters).")
+
+        history = db.kt_history(state.db_path, user_id)
+        ctx = TutorContext(
+            mode=body.mode,
+            course=body.course or (UNITS[body.unit][0] if body.unit else None),
+            unit=body.unit,
+            problem=problem,
+            selection=body.selection,
+            mastery=state.mastery_model.mastery(history) if history else {},
+        )
+        try:
+            if state.tutor_llm is None:
+                state.tutor_llm = ClaudeTutorLLM()
+            result = ask_tutor(messages, ctx, state.tutor_llm)
+        except HintConfigError as e:
+            raise HTTPException(503, str(e))
+        db.add_tutor_message(state.db_path, user_id, body.mode, ctx.course, body.unit, body.problem_id,
+                             messages[-1]["content"], result)
+        return {
+            "message": result.message,
+            "walkthrough": result.walkthrough.model_dump() if result.walkthrough else None,
             "verified": result.verified,
             "source": result.source,
         }

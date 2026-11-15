@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 
 const KEY = "tutor-user-id";
+const CHANGED = "tutor-user-changed"; // event so every component sees sign-in / sign-out at once
 // Same rule as the backend's UserId path parameter.
 export const USER_ID_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
 
@@ -23,6 +24,7 @@ export function saveUserId(id: string | null) {
   } catch {
     /* ignore: the id just won't be remembered */
   }
+  window.dispatchEvent(new Event(CHANGED));
 }
 
 /** Returns [userId, loaded]. `loaded` is false until we've checked storage,
@@ -34,6 +36,9 @@ export function useUserId(): [string | null, boolean] {
     // Runs only in the browser; localStorage doesn't exist during server rendering.
     setId(read());
     setLoaded(true);
+    const onChange = () => setId(read());
+    window.addEventListener(CHANGED, onChange);
+    return () => window.removeEventListener(CHANGED, onChange);
   }, []);
   return [id, loaded];
 }

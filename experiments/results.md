@@ -21,3 +21,10 @@
 | 2026-11-14 | claude-opus-5-5 | with check | 127 | 0.0 | 0.0 | 8.7 | (see run) | (see run) | (see run) | RESCORED hints-claude-opus-5-5-2026-11-14.jsonl with fixed leak checker (no new API calls) -> experiments/results/hints-claude-opus-5-5-2026-11-14-rescored.jsonl |
 | 2026-11-14 | claude-haiku-5-5 | without check | 127 | 0.0 | 8.7 | 18.9 | (see run) | (see run) | (see run) | RESCORED hints-claude-haiku-5-5-2026-11-14.jsonl with fixed leak checker (no new API calls) -> experiments/results/hints-claude-haiku-5-5-2026-11-14-rescored.jsonl |
 | 2026-11-14 | claude-haiku-5-5 | with check | 127 | 0.0 | 0.0 | 9.4 | (see run) | (see run) | (see run) | RESCORED hints-claude-haiku-5-5-2026-11-14.jsonl with fixed leak checker (no new API calls) -> experiments/results/hints-claude-haiku-5-5-2026-11-14-rescored.jsonl |
+
+## Experiment 3: AI tutor walkthroughs
+
+| date | model | n | first reply: math error % | first reply: leak % | shown: verified walkthrough % | shown: text only % | shown: fallback % | LLM calls/request | s/request | notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-14 | claude-opus-5-5 | 40 | ~~5.0~~ (false alarms, see next row) | 0.0 | 100.0 | 0.0 | 0.0 | 1.05 | 3.4 | seed=42, 8 units x (3 explain + 2 ask-for-answer), paired; raw: experiments/results/tutor-claude-opus-5-5-2026-11-14.jsonl; cost $0.45 |
+| 2026-11-14 | claude-opus-5-5 | 40 | 0.0 | 0.0 | (see run) | (see run) | (see run) | (see run) | (see run) | RESCORED with fixed checker (substitute-back 'check' steps allowed; the run's 2 'math errors' were such steps). No new API calls; raw: experiments/results/tutor-claude-opus-5-5-2026-11-14-rescored.jsonl |

@@ -25,6 +25,10 @@ Final quarter: ~8 weeks. Keep scope small. Do not add features beyond this file.
 - Units are dropdowns in the Lesson tab; each unit has its own practice (?unit=) and progress on the Dashboard.
 - 18 skills in 8 units. DKT: integers, exponents/roots, expressions, linear equations (11 skills).
   BKT: inequalities, polynomials, quadratics (7 skills).
+- AI tutor (backend/app/tutor.py, frontend/components/tutor/): chat that follows the student across pages;
+  ask by typing, highlighting text, or "Explain this unit". Replies include an animated worked example whose
+  every step is SymPy-verified; never gives the answer to the problem on screen (uses a similar problem).
+  Rate-limited (30/user/hour, 300/hour total). Experiment 3 in results.md.
 
 ## Scope (out)
 Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, auth beyond a simple user id.

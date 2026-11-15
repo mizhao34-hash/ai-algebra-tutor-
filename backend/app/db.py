@@ -38,6 +38,24 @@ CREATE TABLE IF NOT EXISTS hints (
 );
 CREATE INDEX IF NOT EXISTS idx_hints_user ON hints (user_id, problem_id);
 
+CREATE TABLE IF NOT EXISTS tutor_messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT NOT NULL,
+    mode        TEXT NOT NULL,     -- chat | selection | explain_unit
+    course_id   TEXT,
+    unit_id     TEXT,
+    problem_id  TEXT,
+    question    TEXT NOT NULL,
+    reply       TEXT NOT NULL,
+    walkthrough TEXT,              -- JSON, NULL if none was shown
+    verified    INTEGER NOT NULL,
+    source      TEXT NOT NULL,     -- llm | fallback
+    attempts    INTEGER NOT NULL,
+    rejections  TEXT NOT NULL,     -- JSON list (server-side only)
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_tutor_user ON tutor_messages (user_id, created_at);
+
 CREATE TABLE IF NOT EXISTS enrollments (
     user_id   TEXT NOT NULL,
     course_id TEXT NOT NULL,
@@ -130,3 +148,27 @@ def joined_courses(path: str, user_id: str) -> list[tuple[str, str]]:
             "SELECT course_id, joined_at FROM enrollments WHERE user_id = ? ORDER BY joined_at, course_id", (user_id,)
         ).fetchall()
     return [(r["course_id"], r["joined_at"]) for r in rows]
+
+
+def add_tutor_message(path: str, user_id: str, mode: str, course_id, unit_id, problem_id,
+                      question: str, result) -> None:
+    """Store a TutorResult (see tutor.py)."""
+    walkthrough = result.walkthrough.model_dump_json() if result.walkthrough else None
+    with connect(path) as conn:
+        conn.execute(
+            "INSERT INTO tutor_messages (user_id, mode, course_id, unit_id, problem_id, question, reply, walkthrough,"
+            " verified, source, attempts, rejections) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, mode, course_id, unit_id, problem_id, question, result.message, walkthrough,
+             int(result.verified), result.source, result.attempts, json.dumps(result.rejections)),
+        )
+
+
+def tutor_messages_last_hour(path: str, user_id: str | None = None) -> int:
+    """How many tutor replies in the last hour, for one user or (None) everyone. Used for rate limiting."""
+    query = "SELECT COUNT(*) FROM tutor_messages WHERE created_at >= datetime('now', '-1 hour')"
+    args: tuple = ()
+    if user_id is not None:
+        query += " AND user_id = ?"
+        args = (user_id,)
+    with connect(path) as conn:
+        return conn.execute(query, args).fetchone()[0]

@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { ArrowRightIcon, CheckIcon, LightbulbIcon, SkipIcon, WarningIcon, XIcon } from "@/components/Icons";
 import { MasteryList } from "@/components/Mastery";
+import { useTutorPage } from "@/components/tutor/TutorProvider";
 import { api, type AttemptResult, type GradeStatus, type Hint, type MasteryReport, type Problem } from "@/lib/api";
 import { pretty } from "@/lib/math";
 import { btn, card, theme } from "@/lib/ui";
@@ -75,6 +76,8 @@ function Practice({ initialSkill, unit }: { initialSkill: string; unit?: string 
   const [hintBusy, setHintBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The AI tutor knows the unit and the problem on screen (and won't give its answer).
+  useTutorPage({ unit, problemId: problem?.id });
 
   // No saved user id: go back to the start page.
   useEffect(() => {
