@@ -1,10 +1,11 @@
 "use client";
 
-// Concept tab: every skill's lesson, grouped by unit in teaching order.
+// Lesson tab: every skill's lesson, grouped by unit in teaching order.
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, type Course } from "@/lib/api";
+import { pretty } from "@/lib/math";
 
 export default function Concepts() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -56,7 +57,7 @@ export default function Concepts() {
                     {c.example.map((line, i) => (
                       <li key={i} className={i === c.example.length - 1 ? "font-semibold" : ""}>
                         <span className="mr-2 inline-block w-4 text-slate-400">{i === 0 ? "" : "→"}</span>
-                        {line}
+                        {pretty(line)}
                       </li>
                     ))}
                   </ol>

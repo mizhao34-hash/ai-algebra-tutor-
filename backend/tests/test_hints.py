@@ -213,3 +213,22 @@ def test_claude_400_is_a_config_error_not_retried():
 
     with pytest.raises(HintConfigError, match="credit balance"):
         ClaudeHintLLM(client=Raising(None)).propose(SOLVE, SOLVE.expression, [])
+
+
+QUAD = Problem("quad_factor_solve:1", "quad_factor_solve", "solve", "Solve for x (give both solutions):",
+               "x^2 + x - 6 = 0", "-3, 2")
+
+
+def test_quadratic_hints_are_checked_against_both_solutions():
+    assert check_hint(QUAD, QUAD.expression, P("Factor the left side.", "(x + 3)(x - 2) = 0")) == []
+    wrong = check_hint(QUAD, QUAD.expression, P("Factor.", "(x + 3)(x + 2) = 0"))
+    assert [i.code for i in wrong] == ["not_equivalent"]
+    # Revealing either solution is a leak.
+    assert leaks_answer(QUAD, "so x = 2 works") and leaks_answer(QUAD, "x = -3")
+    assert not leaks_answer(QUAD, "the constant is -6")
+    # Two equations joined by "or" are not a single step the checker can verify.
+    step = P("Set each to zero.", "x + 3 = 0 or x - 2 = 0")
+    assert [i.code for i in check_hint(QUAD, "(x + 3)(x - 2) = 0", step)] == ["unparseable"]
+    validate_current(QUAD, "(x + 3)(x - 2) = 0")
+    with pytest.raises(InvalidInput):
+        validate_current(QUAD, "(x + 3)(x + 2) = 0")

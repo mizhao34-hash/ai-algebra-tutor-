@@ -66,6 +66,15 @@ COURSES: dict[str, Course] = {
                      ("two_step", "vars_both_sides", "parentheses", "multi_step")),
             ),
         ),
+        Course(
+            "algebra_2",
+            "Algebra 2",
+            "Grades 10–11",
+            "Solve quadratic equations, which usually have two solutions.",
+            (
+                Unit("quadratics", "Quadratic equations", ("quad_square_root", "quad_factored", "quad_factor_solve")),
+            ),
+        ),
     ]
 }
 
@@ -179,6 +188,41 @@ CONCEPTS: dict[str, Concept] = {
         ("2(x + 3) + 4x = x + 21", "2x + 6 + 4x = x + 21", "6x + 6 = x + 21", "5x + 6 = 21", "5x = 15", "x = 3"),
         "Combining terms that are on opposite sides of the = sign. A term can only move across "
         "the = sign by doing the same operation to both sides.",
+    ),
+    "quad_square_root": Concept(
+        "When the equation is just x² equal to a number, take the square root of both sides. "
+        "Remember there are two solutions: a positive one and a negative one.",
+        (
+            "Get x² by itself on one side (move constants, divide by the coefficient).",
+            "Take the square root of both sides.",
+            "Write both solutions: x = √k and x = -√k.",
+        ),
+        ("x^2 - 49 = 0", "x^2 = 49", "x = 7 or x = -7"),
+        "Giving only the positive solution. (-7)² = 49 too, so x = -7 is also a solution.",
+    ),
+    "quad_factored": Concept(
+        "Zero-product property: if two factors multiply to 0, at least one of them must be 0. "
+        "So set each factor equal to 0 and solve each one.",
+        (
+            "Check that one side is a product of factors and the other side is 0.",
+            "Set each factor equal to 0.",
+            "Solve each small equation; each gives one solution.",
+        ),
+        ("(x - 2)(x + 3) = 0", "x - 2 = 0 or x + 3 = 0", "x = 2 or x = -3"),
+        "Getting the signs backwards: (x + 3) = 0 gives x = -3, not x = 3.",
+    ),
+    "quad_factor_solve": Concept(
+        "To solve x² + bx + c = 0, factor it as (x + m)(x + n) where m × n = c and m + n = b, "
+        "then use the zero-product property.",
+        (
+            "Make sure one side is 0.",
+            "Find two numbers that multiply to c and add to b.",
+            "Write the factored form (x + m)(x + n) = 0.",
+            "Set each factor to 0 and solve.",
+        ),
+        ("x^2 + x - 6 = 0", "(x + 3)(x - 2) = 0", "x + 3 = 0 or x - 2 = 0", "x = -3 or x = 2"),
+        "Choosing numbers that multiply to c but don't add to b: for x² + x - 6, 6 and -1 multiply "
+        "to -6 but add to 5, not 1. Use 3 and -2.",
     ),
 }
 

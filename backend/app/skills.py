@@ -14,6 +14,9 @@ skills failed this rule, so they were replaced by related, well-trained ones:
     Algebraic Simplification (165, 84 rows) -> Order of Operations All (310)
     Distributive Property    (340, 10 rows) -> Order of Operations with () (309)
     Algebraic Solving        (166, 267 rows) -> dropped; multi_step uses 312 only
+
+Skills with NO ASSISTments ids (Algebra 2) have no DKT training data at all;
+their mastery comes from BKT instead (see bkt.py and mastery.py).
 """
 
 from dataclasses import dataclass
@@ -48,6 +51,10 @@ SKILLS: dict[str, Skill] = {
         Skill("vars_both_sides", "Variables on both sides", ("two_step", "combine_like_terms"), (312,)),
         Skill("parentheses", "Equations with parentheses", ("two_step", "distributive"), (312, 309)),
         Skill("multi_step", "Multi-step equations", ("vars_both_sides", "parentheses"), (312,)),
+        # Algebra 2: quadratic equations (BKT, no ASSISTments mapping).
+        Skill("quad_square_root", "Solving x² = k", ("one_step_mul",), ()),
+        Skill("quad_factored", "Zero-product property", ("one_step_add",), ()),
+        Skill("quad_factor_solve", "Solving by factoring", ("quad_factored",), ()),
     ]
 }
 

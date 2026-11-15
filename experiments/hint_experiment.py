@@ -49,7 +49,7 @@ from app.hints import (  # noqa: E402
 )
 from app.grader import X, parse_math  # noqa: E402
 from app.problems import generate_problem  # noqa: E402
-from app.skills import topological_order  # noqa: E402
+from app.skills import SKILLS, topological_order  # noqa: E402
 
 SEED = 42
 RESULTS_MD = REPO / "experiments" / "results.md"
@@ -64,7 +64,9 @@ LEAKS = {"leak_text", "leak_step"}
 def make_cases(per_skill: int) -> list[dict]:
     rng = random.Random(SEED)
     cases = []
-    for skill in topological_order():
+    # The 9 linear-equation skills the experiment was run on (Algebra 2 skills were
+    # added later); fixed so the sampled cases stay identical when re-run.
+    for skill in [s for s in topological_order() if SKILLS[s].assistments_skill_ids]:
         for _ in range(per_skill):
             p = generate_problem(skill, rng.randrange(10**9))
             cases.append({"problem": p, "state": "start", "current": p.expression})

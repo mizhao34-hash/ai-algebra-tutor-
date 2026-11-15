@@ -37,7 +37,7 @@ from . import db
 from .courses import CONCEPTS, COURSES
 from .grader import InvalidInput, grade, normalize
 from .hints import ClaudeHintLLM, HintConfigError, generate_hint, validate_current
-from .mastery import DKTMastery
+from .mastery import CombinedMastery
 from .problems import generate_problem, problem_from_id
 from .recommend import is_unlocked, recommend
 from .skills import MASTERY_THRESHOLD, SKILLS, topological_order
@@ -139,7 +139,7 @@ def create_app(db_path: str | None = None, mastery_model=None, hint_llm=None) ->
     async def lifespan(app: FastAPI):
         app.state.db_path = db_path or os.environ.get("TUTOR_DB", "tutor.db")
         db.init(app.state.db_path)
-        app.state.mastery_model = mastery_model or DKTMastery()  # loads the checkpoint once
+        app.state.mastery_model = mastery_model or CombinedMastery()  # loads the DKT checkpoint once
         app.state.hint_llm = hint_llm  # created on first hint request, so the app runs without an API key
         yield
 

@@ -25,7 +25,7 @@ import anthropic
 from pydantic import BaseModel, Field
 from sympy import Eq, expand, solve
 
-from .grader import X, InvalidInput, is_simplest_linear, parse_math
+from .grader import X, InvalidInput, answer_values, is_simplest_linear, parse_math
 from .problems import Problem
 from .skills import SKILLS
 
@@ -84,8 +84,13 @@ def _split_equation(text: str):
     return parse_math(parts[0].strip()), parse_math(parts[1].strip())
 
 
-def _solutions(lhs, rhs) -> list:
-    return solve(Eq(lhs, rhs), X)
+def _solutions(lhs, rhs) -> set:
+    return set(solve(Eq(lhs, rhs), X))
+
+
+def _answers(problem: Problem) -> set:
+    """The problem's solution set ({4}, or {-3, 2} for a quadratic)."""
+    return set(answer_values(problem))
 
 
 def _same_text(a: str, b: str) -> bool:
@@ -96,19 +101,22 @@ def leaks_answer(problem: Problem, text: str) -> bool:
     """Does free text state the final answer? Deliberately strict: a false
     alarm only costs a retry, a miss gives the answer away."""
     raw = text.replace("−", "-").lower()
-    ans = problem.answer.replace(" ", "").lower()
     if problem.kind == "simplify":
-        return ans in raw.replace(" ", "")
+        return problem.answer.replace(" ", "").lower() in raw.replace(" ", "")
     # Remove spaces only around "=", keeping word boundaries, so "so x = 4" -> "so x=4"
     # while "8x = 0" -> "8x=0" still shows the 8 in front of x.
     t = re.sub(r"\s*=\s*", "=", raw)
-    a = re.escape(ans)
     end = r"(?!\d|[/.]\d)"  # not followed by more digits, "/2" or ".5" ("x = 4." still counts)
     alone = r"(?<![\w)])"    # x is a bare variable, not "8x" or "(x"
-    patterns = [rf"{alone}x=+{a}{end}", rf"(?<![\d.]){a}=x(?![\w(])", rf"{alone}x\s+is\s+{a}{end}"]
-    if problem.kind == "evaluate":
-        patterns += [rf"(=|\bis\s+){a}{end}"]
-    return any(re.search(p, t) for p in patterns)
+    # Quadratics have two answers ("-3, 2"); stating EITHER one is a leak.
+    for ans in problem.answer.replace(" ", "").lower().split(","):
+        a = re.escape(ans)
+        patterns = [rf"{alone}x=+{a}{end}", rf"(?<![\d.]){a}=x(?![\w(])", rf"{alone}x\s+is\s+{a}{end}"]
+        if problem.kind == "evaluate":
+            patterns += [rf"(=|\bis\s+){a}{end}"]
+        if any(re.search(p, t) for p in patterns):
+            return True
+    return False
 
 
 def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[HintIssue]:
@@ -128,8 +136,7 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
         if problem.kind == "solve":
             lhs, rhs = _split_equation(step)
             cur_l, cur_r = _split_equation(current)
-            sols = _solutions(lhs, rhs)
-            if sols != [parse_math(problem.answer)]:
+            if _solutions(lhs, rhs) != _answers(problem):
                 errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original equation."))
             # Compare the WRITTEN form, not the value: distributing or combining like
             # terms never changes a side's value, but it is real progress.
@@ -140,14 +147,15 @@ def check_hint(problem: Problem, current: str, proposal: HintProposal) -> list[H
                 errors.append(HintIssue("leak_step", "The next step reveals the final answer; leave next_step empty instead."))
         else:
             expr, cur = parse_math(step), parse_math(current)
-            if expand(expr - parse_math(problem.answer)) != 0:
+            if expand(expr - answer_values(problem)[0]) != 0:
                 errors.append(HintIssue("not_equivalent", f"'{step}' is not equivalent to the original expression."))
             elif _same_text(step, current):
                 errors.append(HintIssue("no_progress", f"'{step}' doesn't change anything; it should make one step of progress."))
             elif is_simplest_linear(step):
                 errors.append(HintIssue("leak_step", "The next step is the final answer; leave next_step empty instead."))
     except InvalidInput as e:
-        errors.append(HintIssue("unparseable", f"next_step '{step}' couldn't be parsed ({e}). Use only numbers, x, + - * / ( ) and =."))
+        errors.append(HintIssue("unparseable", f"next_step '{step}' couldn't be parsed ({e}). Write ONE equation or "
+                                               "expression using only numbers, x, + - * / ^ ( ) and =."))
     return errors
 
 
@@ -155,10 +163,9 @@ def validate_current(problem: Problem, current: str) -> None:
     """The student's current step must be valid math equivalent to the problem.
     Raises InvalidInput otherwise (the API turns that into a 400)."""
     if problem.kind == "solve":
-        sols = _solutions(*_split_equation(current))
-        if sols != [parse_math(problem.answer)]:
+        if _solutions(*_split_equation(current)) != _answers(problem):
             raise InvalidInput("current step is not equivalent to the problem")
-    elif expand(parse_math(current) - parse_math(problem.answer)) != 0:
+    elif expand(parse_math(current) - answer_values(problem)[0]) != 0:
         raise InvalidInput("current step is not equivalent to the problem")
 
 
@@ -174,6 +181,9 @@ FALLBACK_HINTS = {
     "vars_both_sides": "Move all x terms to one side and all numbers to the other, then simplify.",
     "parentheses": "Start by distributing (or divide both sides by the number outside the parentheses).",
     "multi_step": "Distribute first, combine like terms on each side, then collect x terms on one side.",
+    "quad_square_root": "Get x squared by itself, then take the square root of both sides. Remember the negative root.",
+    "quad_factored": "If a product is zero, one of the factors must be zero. Set each factor equal to zero.",
+    "quad_factor_solve": "Look for two numbers that multiply to the constant term and add to the x coefficient.",
 }
 
 
@@ -213,7 +223,9 @@ Rules:
   numbers, x, + - * / ( ) and = (e.g. "3x = 12" or "2x + 7"). Use implicit multiplication like 3x.
 - Never state the final answer anywhere. If the next step would produce the final answer
   (for example "x = 4", a fully simplified expression, or the final number), set "next_step"
-  to "" and only describe the operation in "hint"."""
+  to "" and only describe the operation in "hint".
+- "next_step" must be ONE equation or expression, never two joined by "or". Write powers as x^2.
+- Quadratic equations have two solutions; never state either of them."""
 
 
 def _user_prompt(problem: Problem, current: str, rejections: list[str]) -> str:

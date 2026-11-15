@@ -57,9 +57,11 @@ export function MasteryList({
   threshold: number;
   recommended: string;
 }) {
-  // Only call untried skills "estimated" once the student has answered something;
-  // before that every skill is simply 0%.
-  const anyAttempts = skills.some((s) => s.attempts > 0);
+  // "Estimated" = a skill with no answers yet but a non-zero mastery, which only
+  // DKT produces (it generalizes from other skills). BKT skills (Algebra 2) and
+  // brand-new students stay at a plain 0%.
+  const isEstimate = (s: SkillMastery) => s.attempts === 0 && s.mastery > 0;
+  const anyEstimates = skills.some(isEstimate);
   return (
     <>
     <ul className="space-y-3">
@@ -72,7 +74,7 @@ export function MasteryList({
             </span>
             <span className="tabular-nums text-slate-500 dark:text-slate-400">
               {Math.round(s.mastery * 100)}%
-              {anyAttempts && s.attempts === 0 && <span title="Not practiced yet: estimated from your other answers">*</span>}
+              {isEstimate(s) && <span title="Not practiced yet: estimated from your other answers">*</span>}
             </span>
           </div>
           <MasteryBar skill={s} threshold={threshold} />
@@ -80,7 +82,7 @@ export function MasteryList({
       ))}
     </ul>
     <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-      {anyAttempts && "* not practiced yet; estimated from your other answers. "}
+      {anyEstimates && "* not practiced yet; estimated from your other answers. "}
       The tick marks the {Math.round(threshold * 100)}% mastery threshold.
     </p>
     </>

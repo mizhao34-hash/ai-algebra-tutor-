@@ -16,11 +16,13 @@ Final quarter: ~8 weeks. Keep scope small. Do not add features beyond this file.
 - Experiments: (1) BKT vs DKT AUC, (2) hint error/leak rate with vs without SymPy check
 
 ## Scope change (2026-11-14, decided by me)
-- Turn the tutor into a small algebra learning platform: course catalog (Pre-Algebra, Algebra 1),
-  each course has a Concept tab (lessons by unit/topic) and a Practice tab (existing practice/hints/mastery);
+- Turn the tutor into a small algebra learning platform. Top tabs: Dashboard | Pre-Algebra | Algebra 1 | Algebra 2.
+  Each course has a Lesson tab (lessons by unit/topic) and a Practice tab (practice/hints/mastery);
   Dashboard lists joined courses and their mastery.
-- Algebra only, and only skills DKT has training data for (>= 1000 ASSISTments rows). Algebra 2 = future work.
-- Step 1: platform structure + concepts for the existing 9 skills. Step 2 (if time): new Pre-Algebra skills.
+- Algebra only. Pre-Algebra + Algebra 1 skills use DKT (>= 1000 ASSISTments rows each).
+  Algebra 2 (quadratics unit) has no ASSISTments data, so its mastery uses BKT with hand-set
+  parameters (backend/app/bkt.py) — a documented limitation.
+- Done: platform + lessons for all 12 skills + Algebra 2 quadratics. If time: new Pre-Algebra skills.
 
 ## Scope (out)
 Teacher dashboard, adaptive diagnostic, misconception model, RL, user study, auth beyond a simple user id.

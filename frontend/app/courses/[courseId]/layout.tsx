@@ -31,17 +31,14 @@ export default function CourseLayout({ children }: { children: React.ReactNode }
   if (!userId) return null;
 
   const tabs = [
-    { href: `/courses/${courseId}`, label: "Concept" },
+    { href: `/courses/${courseId}`, label: "Lesson" },
     { href: `/courses/${courseId}/practice`, label: "Practice" },
   ];
 
   return (
     <div>
       <div className="mb-6">
-        <Link href="/" className="text-sm text-slate-500 hover:underline dark:text-slate-400">
-          ← All courses
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">{course?.name ?? (error ? "Course" : "Loading…")}</h1>
+        <h1 className="text-2xl font-semibold">{course?.name ?? (error ? "Course" : "Loading…")}</h1>
         {course && <p className="text-sm text-slate-500 dark:text-slate-400">{course.grades}</p>}
         {error && <p className="mt-2 text-sm text-red-700 dark:text-red-300">{error}</p>}
       </div>

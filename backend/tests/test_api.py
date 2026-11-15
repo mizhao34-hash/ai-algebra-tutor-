@@ -155,7 +155,7 @@ def test_hint_without_api_key_is_503(tmp_path, fake):
 
 def test_course_catalog_and_detail(client):
     cat = client.get("/courses").json()
-    assert [c["id"] for c in cat] == ["pre_algebra", "algebra_1"]
+    assert [c["id"] for c in cat] == ["pre_algebra", "algebra_1", "algebra_2"]
     assert "concept" not in cat[0]["units"][0]["skills"][0]
     detail = client.get("/courses/algebra_1").json()
     lesson = detail["units"][0]["skills"][0]["concept"]

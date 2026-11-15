@@ -9,10 +9,13 @@ from app.skills import SKILLS, topological_order
 
 def value(line: str):
     """A worked-example line as something comparable: the solution set of an
-    equation, or the expression itself."""
+    equation (or of several joined by "or"), or the expression itself."""
     if "=" in line:
-        lhs, rhs = line.split("=")
-        return ("eq", tuple(solve(Eq(parse_math(lhs), parse_math(rhs)), X)))
+        sols = set()
+        for eq in line.split(" or "):
+            lhs, rhs = eq.split("=")
+            sols |= set(solve(Eq(parse_math(lhs), parse_math(rhs)), X))
+        return ("eq", frozenset(sols))
     return ("expr", parse_math(line).expand())
 
 
@@ -29,7 +32,8 @@ def test_worked_example_every_line_is_equivalent(skill):
 def test_worked_example_ends_in_simplest_answer(skill):
     last = CONCEPTS[skill].example[-1].replace(" ", "")
     if "=" in CONCEPTS[skill].example[0]:
-        assert last.startswith("x=") and parse_math(last[2:]).is_number, skill
+        for part in last.split("or"):  # "x=7orx=-7" for two solutions
+            assert part.startswith("x=") and parse_math(part[2:]).is_number, skill
     else:
         from app.grader import is_simplest_linear
         assert is_simplest_linear(last), skill

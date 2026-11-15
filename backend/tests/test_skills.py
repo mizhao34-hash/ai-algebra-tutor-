@@ -4,8 +4,8 @@ from app import skills
 from app.skills import SKILLS, Skill, topological_order
 
 
-def test_nine_skills_in_scope():
-    assert 8 <= len(SKILLS) <= 10
+def test_skill_count():
+    assert len(SKILLS) == 12  # 9 linear (DKT) + 3 quadratic (BKT)
 
 
 def test_prerequisites_come_first():
@@ -17,9 +17,11 @@ def test_prerequisites_come_first():
             assert pos[pre] < pos[s.id]
 
 
-def test_every_skill_maps_to_assistments():
-    for s in SKILLS.values():
-        assert s.assistments_skill_ids
+def test_only_algebra_2_skills_lack_a_dkt_mapping():
+    from app.courses import COURSES
+
+    unmapped = {sid for sid, s in SKILLS.items() if not s.assistments_skill_ids}
+    assert unmapped == set(COURSES["algebra_2"].skills)
 
 
 def test_cycle_is_detected(monkeypatch):

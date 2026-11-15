@@ -130,6 +130,49 @@ def _multi_step(r: random.Random):
     return "solve", "Solve for x:", f"{lhs} = {_linear(d, e)}", str(x)
 
 
+# ---------- Algebra 2: quadratics (answers are two roots, stored "r1, r2" sorted) ----------
+
+def _roots(r1: int, r2: int) -> str:
+    return ", ".join(str(r) for r in sorted((r1, r2)))
+
+
+def _quad_square_root(r: random.Random):
+    k, a = r.randint(2, 12), r.choice([1, 1, 2, 3])
+    form = r.choice(["equals", "zero", "coef"])
+    if form == "zero":
+        expr = f"x^2 - {k * k} = 0"
+    elif form == "coef" and a > 1:
+        expr = f"{a}x^2 = {a * k * k}"
+    else:
+        expr = f"x^2 = {k * k}"
+    return "solve", "Solve for x (give both solutions):", expr, _roots(k, -k)
+
+
+def _factor(root: int) -> str:
+    """The factor that is zero at `root`: 2 -> '(x - 2)', -3 -> '(x + 3)'."""
+    return f"({_linear(1, -root)})"
+
+
+def _two_roots(r: random.Random) -> tuple[int, int]:
+    while True:
+        r1, r2 = r.choice(COEF_RANGE), r.choice(COEF_RANGE)
+        if r1 != r2:  # a double root would have only one solution
+            return r1, r2
+
+
+def _quad_factored(r: random.Random):
+    r1, r2 = _two_roots(r)
+    return "solve", "Solve for x (give both solutions):", f"{_factor(r1)}{_factor(r2)} = 0", _roots(r1, r2)
+
+
+def _quad_factor_solve(r: random.Random):
+    # (x - r1)(x - r2) = x^2 - (r1 + r2)x + r1*r2
+    r1, r2 = _two_roots(r)
+    b, c = -(r1 + r2), r1 * r2
+    expr = "x^2" + (_term(b) if b else "") + _term(c, var="") + " = 0"
+    return "solve", "Solve for x (give both solutions):", expr, _roots(r1, r2)
+
+
 GENERATORS = {
     "integer_ops": _integer_ops,
     "combine_like_terms": _combine_like_terms,
@@ -140,6 +183,9 @@ GENERATORS = {
     "vars_both_sides": _vars_both_sides,
     "parentheses": _parentheses,
     "multi_step": _multi_step,
+    "quad_square_root": _quad_square_root,
+    "quad_factored": _quad_factored,
+    "quad_factor_solve": _quad_factor_solve,
 }
 assert set(GENERATORS) == set(SKILLS), "every skill needs exactly one generator"
 

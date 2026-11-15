@@ -6,8 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MasteryBar, StateChip, skillState } from "@/components/Mastery";
-import { api, type JoinedCourse, type SkillMastery } from "@/lib/api";
-import { useUserId } from "@/lib/user";
+import { api, type Course, type JoinedCourse, type SkillMastery } from "@/lib/api";
+import { saveUserId, useUserId } from "@/lib/user";
 
 /** Group skills by prerequisite depth: 0 = no prerequisites (inside this course),
  *  otherwise 1 + the deepest prerequisite. Works in one pass because the
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [userId, loaded] = useUserId();
   const [courses, setCourses] = useState<JoinedCourse[] | null>(null);
+  const [catalog, setCatalog] = useState<Course[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,7 +39,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (!userId) return;
     api.myCourses(userId).then(setCourses, (e) => setError(e instanceof Error ? e.message : String(e)));
+    api.courses().then(setCatalog, () => {});
   }, [userId]);
+
+  function switchUser() {
+    saveUserId(null);
+    router.push("/");
+  }
 
   if (!userId) return null;
   if (error)
@@ -54,16 +61,15 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        {userId} · a skill is mastered at a 70% predicted chance of answering correctly
+        Signed in as <span className="font-medium text-slate-700 dark:text-slate-200">{userId}</span> ·{" "}
+        <button onClick={switchUser} className="underline">
+          switch user
+        </button>{" "}
+        · a skill is mastered at a 70% predicted chance of answering correctly
       </p>
 
       {courses.length === 0 && (
-        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-          <p>You haven&apos;t joined a course yet.</p>
-          <Link href="/" className="mt-3 inline-block rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
-            Browse courses
-          </Link>
-        </div>
+        <p className="mt-6 text-slate-600 dark:text-slate-300">You haven&apos;t started a course yet. Pick one below.</p>
       )}
 
       <div className="mt-6 space-y-8">
@@ -79,7 +85,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link href={`/courses/${c.id}`} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                    Concepts
+                    Lesson
                   </Link>
                   <Link href={`/courses/${c.id}/practice`} className="rounded-md bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700">
                     Practice {names[c.mastery.recommended]}
@@ -125,7 +131,7 @@ export default function Dashboard() {
                             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                               {k.attempts
                                 ? `${k.correct} of ${k.attempts} right on first try`
-                                : s.attempts
+                                : k.mastery > 0
                                   ? "Not practiced yet · estimated from your other answers"
                                   : "Not practiced yet"}
                             </p>
@@ -145,6 +151,30 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {catalog.some((c) => !courses.some((j) => j.id === c.id)) && (
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold">{courses.length ? "Other courses" : "Courses"}</h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {catalog
+              .filter((c) => !courses.some((j) => j.id === c.id))
+              .map((c) => (
+                <div key={c.id} className="flex flex-col rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold">{c.name}</h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      {c.grades}
+                    </span>
+                  </div>
+                  <p className="mt-2 flex-1 text-sm text-slate-600 dark:text-slate-300">{c.description}</p>
+                  <Link href={`/courses/${c.id}`} className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-sky-700">
+                    Start course
+                  </Link>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

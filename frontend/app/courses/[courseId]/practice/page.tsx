@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { MasteryList } from "@/components/Mastery";
 import { api, type AttemptResult, type GradeStatus, type Hint, type MasteryReport, type Problem } from "@/lib/api";
+import { pretty } from "@/lib/math";
 import { useUserId } from "@/lib/user";
 
 const PLACEHOLDER: Record<Problem["kind"], string> = {
@@ -159,13 +160,14 @@ function Practice() {
               </p>
             )}
             <p className="mt-4">{problem.prompt}</p>
-            <p className="mt-2 font-mono text-2xl sm:text-3xl break-words">{problem.expression}</p>
+            <p className="mt-2 font-mono text-2xl sm:text-3xl break-words">{pretty(problem.expression)}</p>
 
             <form onSubmit={submit} className="mt-6 flex flex-col gap-3 sm:flex-row">
               <input
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder={PLACEHOLDER[problem.kind]}
+                // Quadratics have two answers; show the format we accept.
+                placeholder={problem.prompt.includes("both") ? "x = …, x = …" : PLACEHOLDER[problem.kind]}
                 disabled={solved || busy}
                 autoComplete="off"
                 autoFocus
@@ -211,7 +213,7 @@ function Practice() {
                     className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-950 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-100"
                   >
                     <span className="font-medium">Hint {i + 1}:</span> {h.hint}
-                    {h.next_step && <span className="mt-1 block font-mono text-base">→ {h.next_step}</span>}
+                    {h.next_step && <span className="mt-1 block font-mono text-base">→ {pretty(h.next_step)}</span>}
                   </li>
                 ))}
               </ol>
@@ -253,7 +255,7 @@ function Practice() {
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="font-semibold">Mastery</h2>
           <Link href={`/courses/${courseId}`} className="text-sm underline">
-            Review concepts
+            Review lesson
           </Link>
         </div>
         {report && <MasteryList skills={report.skills} threshold={report.threshold} recommended={report.recommended} />}
