@@ -38,6 +38,14 @@ access to one-on-one help outside class: when they got stuck at home, there was 
 the next step. I wanted to build a tool that lets these students learn algebra on their own, at
 their own pace, with help available whenever they need it.
 
+I expect this way of learning, self-paced practice with an AI tutor available at any time, to become
+increasingly common, because it is both cheap and efficient. In this project a verified hint cost
+about 0.4 cents and a tutor reply about 1 cent (Section 5), far less than one-on-one human tutoring,
+and the tutor gives immediate, step-level feedback and picks each student's next problem
+automatically. Prior work found that ChatGPT-generated help can produce learning gains comparable to
+human-authored help (Pardos & Bhandari, 2024). But as AI tutors spread, their failure modes matter
+more, not less.
+
 Practice is most useful when it targets what a student has not yet mastered, and help is
 most useful when it addresses the step a student is stuck on. Classroom teachers cannot
 provide either for every student at once. Intelligent tutoring systems have long tried to
@@ -349,7 +357,7 @@ answer" step.
 - Persistent storage (Postgres) for real deployments.
 
 ## 9. Conclusion
-This project built and deployed an adaptive algebra tutor whose LLM features are constrained by a computer algebra system. On held-out ASSISTments students, DKT predicted performance better than BKT (test AUC 0.751 vs. 0.708), answering RQ1. For RQ2, verifying each hint step with SymPy removed every detectable answer leak from a weaker LLM (7.9% to 0%) at about 11% more model calls, while a stronger LLM rarely needed correction. For RQ3, multi-step tutor walkthroughs could be verified in the same way: all 40 shown walkthroughs passed every check. The main lesson is that LLMs become usable as math tutors when their mathematical claims are treated as claims to verify rather than as trusted output, but the verifier is itself a model that must be tested: in both LLM experiments, our own checker produced errors that only careful inspection of its outputs revealed.
+This project built and deployed an adaptive algebra tutor whose LLM features are constrained by a computer algebra system. On held-out ASSISTments students, DKT predicted performance better than BKT (test AUC 0.751 vs. 0.708), answering RQ1. For RQ2, verifying each hint step with SymPy removed every detectable answer leak from a weaker LLM (7.9% to 0%) at about 11% more model calls, while a stronger LLM rarely needed correction. For RQ3, multi-step tutor walkthroughs could be verified in the same way: all 40 shown walkthroughs passed every check. At a cost of about one cent per interaction, this kind of tutor can be offered to every student, including those with no access to a human tutor, which is why getting its safeguards right matters. The main lesson is that LLMs become usable as math tutors when their mathematical claims are treated as claims to verify rather than as trusted output, but the verifier is itself a model that must be tested: in both LLM experiments, our own checker produced errors that only careful inspection of its outputs revealed.
 
 ## 10. Reflection
 The hardest part was not any single model but the joints between components. DKT was trained on ASSISTments skills, so connecting it to my own curriculum required a skill mapping, and some of the closest-named skills had almost no training data; I had to set a minimum-data rule and fall back to BKT where data did not exist. The experiments were also humbling: three bugs in my own verification pipeline, and a false alarm that made the tutor look worse than it was, only surfaced because I inspected individual outputs instead of trusting summary numbers. The scope also grew during the project, from one unit of linear equations to a three-course platform with lessons and an AI tutor. This came from my original motivation: the students I tutored needed to be able to learn on their own, and practice problems alone are not enough for that. A student working alone also needs a place to learn the concepts and someone to ask when they are stuck. If I started again, I would plan an evaluation with the students who motivated this project from the beginning, since whether they actually learn more is the question this project cannot yet answer, and I would write tests for the verifier before running experiments with it.
