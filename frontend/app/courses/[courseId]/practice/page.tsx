@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { MasteryList } from "@/components/Mastery";
 import { api, type AttemptResult, type GradeStatus, type Hint, type MasteryReport, type Problem } from "@/lib/api";
 import { useUserId } from "@/lib/user";
@@ -22,14 +22,26 @@ const FEEDBACK_STYLE: Record<GradeStatus, string> = {
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-export default function Practice() {
+// useSearchParams() needs a Suspense boundary in the Next.js app router.
+export default function PracticePage() {
+  return (
+    <Suspense>
+      <Practice />
+    </Suspense>
+  );
+}
+
+function Practice() {
   const router = useRouter();
+  const { courseId } = useParams<{ courseId: string }>();
+  // "Practice this skill" links from the Concept tab pass ?skill=...
+  const initialSkill = useSearchParams().get("skill") ?? "";
   const [userId, loaded] = useUserId();
   const [report, setReport] = useState<MasteryReport | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<AttemptResult | null>(null);
-  const [choice, setChoice] = useState(""); // "" means "let the tutor recommend"
+  const [choice, setChoice] = useState(initialSkill); // "" means "let the tutor recommend"
   const [hints, setHints] = useState<Hint[]>([]); // hints so far for this problem, oldest first
   const [hintBusy, setHintBusy] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,7 +56,10 @@ export default function Practice() {
     setBusy(true);
     setError(null);
     try {
-      const [p, m] = await Promise.all([api.nextProblem(uid, skill || undefined), api.mastery(uid)]);
+      const [p, m] = await Promise.all([
+        api.nextProblem(uid, skill || undefined, courseId),
+        api.mastery(uid, courseId),
+      ]);
       setProblem(p);
       setReport(m);
       setAnswer("");
@@ -55,7 +70,7 @@ export default function Practice() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [courseId]);
 
   // New problem on first load and whenever the skill choice changes.
   useEffect(() => {
@@ -68,7 +83,7 @@ export default function Practice() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.submit(userId, problem.id, answer);
+      const r = await api.submit(userId, problem.id, answer, courseId);
       setResult(r);
       setReport(r.mastery); // the backend returns updated mastery with every grade
     } catch (e) {
@@ -104,13 +119,7 @@ export default function Practice() {
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_18rem]">
       <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Signed in as <span className="font-medium text-slate-700 dark:text-slate-200">{userId}</span> ·{" "}
-            <Link href="/" className="underline">
-              change
-            </Link>
-          </p>
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
           <label className="flex items-center gap-2 text-sm">
             Skill
             <select
@@ -146,7 +155,7 @@ export default function Practice() {
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{problem.skill_name}</p>
             {isRecommended && (
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Recommended: your lowest-mastery skill whose prerequisites you&apos;ve mastered.
+                Recommended: your lowest-mastery skill in this course whose prerequisites you&apos;ve mastered.
               </p>
             )}
             <p className="mt-4">{problem.prompt}</p>
@@ -243,8 +252,8 @@ export default function Practice() {
       <aside>
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="font-semibold">Mastery</h2>
-          <Link href="/dashboard" className="text-sm underline">
-            Dashboard
+          <Link href={`/courses/${courseId}`} className="text-sm underline">
+            Review concepts
           </Link>
         </div>
         {report && <MasteryList skills={report.skills} threshold={report.threshold} recommended={report.recommended} />}

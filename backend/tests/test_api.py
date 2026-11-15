@@ -149,3 +149,39 @@ def test_hint_without_api_key_is_503(tmp_path, fake):
         p = c.get("/users/k/next").json()
         r = c.post("/users/k/hints", json={"problem_id": p["id"]})
         assert r.status_code == 503 and "no key" in r.text
+
+
+# ---------- courses ----------
+
+def test_course_catalog_and_detail(client):
+    cat = client.get("/courses").json()
+    assert [c["id"] for c in cat] == ["pre_algebra", "algebra_1"]
+    assert "concept" not in cat[0]["units"][0]["skills"][0]
+    detail = client.get("/courses/algebra_1").json()
+    lesson = detail["units"][0]["skills"][0]["concept"]
+    assert lesson["summary"] and lesson["steps"] and lesson["example"] and lesson["mistake"]
+    assert client.get("/courses/calculus").status_code == 404
+
+
+def test_join_and_dashboard_summary(client):
+    assert client.get("/users/c1/courses").json() == []
+    client.post("/users/c1/courses/algebra_1")
+    client.post("/users/c1/courses/algebra_1")  # idempotent
+    assert client.post("/users/c1/courses/calculus").status_code == 404
+    mine = client.get("/users/c1/courses").json()
+    assert [c["id"] for c in mine] == ["algebra_1"]
+    assert mine[0]["summary"] == {"skills": 6, "mastered": 0, "average_mastery": 0.0, "attempts": 0, "correct": 0}
+
+
+def test_course_filtered_mastery_and_next(client):
+    m = client.get("/users/c2/mastery", params={"course": "algebra_1"}).json()
+    assert [s["id"] for s in m["skills"]][0] == "one_step_add" and len(m["skills"]) == 6
+    assert m["recommended"] == "one_step_add"
+    assert m["skills"][0]["prerequisites"] == []  # integer_ops is in another course
+    p = client.get("/users/c2/next", params={"course": "algebra_1"}).json()
+    assert p["skill"] == "one_step_add"
+    # A skill from another course is rejected when a course is given.
+    assert client.get("/users/c2/next", params={"course": "algebra_1", "skill": "distributive"}).status_code == 404
+    r = client.post("/users/c2/attempts", params={"course": "algebra_1"},
+                    json={"problem_id": p["id"], "answer": answer_of(p["id"])}).json()
+    assert r["mastery"]["course"] == "algebra_1" and len(r["mastery"]["skills"]) == 6

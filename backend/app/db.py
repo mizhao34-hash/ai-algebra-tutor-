@@ -37,6 +37,13 @@ CREATE TABLE IF NOT EXISTS hints (
     created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_hints_user ON hints (user_id, problem_id);
+
+CREATE TABLE IF NOT EXISTS enrollments (
+    user_id   TEXT NOT NULL,
+    course_id TEXT NOT NULL,
+    joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, course_id)
+);
 """
 
 # The first graded attempt of each problem, per user. As in ASSISTments, asking
@@ -108,3 +115,18 @@ def add_hint(path: str, user_id: str, problem_id: str, current: str, result) -> 
             (user_id, problem_id, current, result.hint, result.next_step, int(result.verified), result.source,
              result.attempts, json.dumps(result.rejections), int(answered is None)),
         )
+
+
+def join_course(path: str, user_id: str, course_id: str) -> None:
+    """Idempotent: joining twice keeps the original join time."""
+    with connect(path) as conn:
+        conn.execute("INSERT OR IGNORE INTO enrollments (user_id, course_id) VALUES (?, ?)", (user_id, course_id))
+
+
+def joined_courses(path: str, user_id: str) -> list[tuple[str, str]]:
+    """(course_id, joined_at), oldest first."""
+    with connect(path) as conn:
+        rows = conn.execute(
+            "SELECT course_id, joined_at FROM enrollments WHERE user_id = ? ORDER BY joined_at, course_id", (user_id,)
+        ).fetchall()
+    return [(r["course_id"], r["joined_at"]) for r in rows]

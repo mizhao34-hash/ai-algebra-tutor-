@@ -1,15 +1,17 @@
 "use client";
 
+// Dashboard: the courses this user has joined and their mastery, with a
+// per-skill breakdown grouped by prerequisite level inside each course.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MasteryBar, StateChip, skillState } from "@/components/Mastery";
-import { api, type MasteryReport, type SkillMastery } from "@/lib/api";
+import { api, type JoinedCourse, type SkillMastery } from "@/lib/api";
 import { useUserId } from "@/lib/user";
 
-/** Group skills by prerequisite depth: 0 = no prerequisites, otherwise
- *  1 + the deepest prerequisite. Works in one pass because the backend lists
- *  skills in topological order (prerequisites first). */
+/** Group skills by prerequisite depth: 0 = no prerequisites (inside this course),
+ *  otherwise 1 + the deepest prerequisite. Works in one pass because the
+ *  backend lists skills in topological order (prerequisites first). */
 function byLevel(skills: SkillMastery[]): SkillMastery[][] {
   const depth: Record<string, number> = {};
   const levels: SkillMastery[][] = [];
@@ -21,10 +23,12 @@ function byLevel(skills: SkillMastery[]): SkillMastery[][] {
   return levels;
 }
 
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
 export default function Dashboard() {
   const router = useRouter();
   const [userId, loaded] = useUserId();
-  const [report, setReport] = useState<MasteryReport | null>(null);
+  const [courses, setCourses] = useState<JoinedCourse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,7 +37,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!userId) return;
-    api.mastery(userId).then(setReport, (e) => setError(e instanceof Error ? e.message : String(e)));
+    api.myCourses(userId).then(setCourses, (e) => setError(e instanceof Error ? e.message : String(e)));
   }, [userId]);
 
   if (!userId) return null;
@@ -43,86 +47,103 @@ export default function Dashboard() {
         {error}
       </div>
     );
-  if (!report)
+  if (!courses)
     return <p className="text-slate-500">Loading… If the server was idle, it can take up to a minute to wake up.</p>;
-
-  const names = Object.fromEntries(report.skills.map((s) => [s.id, s.name]));
-  const mastered = report.skills.filter((s) => s.mastered).length;
-  const attempts = report.skills.reduce((n, s) => n + s.attempts, 0);
-  const correct = report.skills.reduce((n, s) => n + s.correct, 0);
-  const pct = (x: number) => `${Math.round(x * 100)}%`;
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Mastery dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {userId} · a skill is mastered at {pct(report.threshold)} predicted chance of answering correctly
-          </p>
+      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        {userId} · a skill is mastered at a 70% predicted chance of answering correctly
+      </p>
+
+      {courses.length === 0 && (
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <p>You haven&apos;t joined a course yet.</p>
+          <Link href="/" className="mt-3 inline-block rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
+            Browse courses
+          </Link>
         </div>
-        <Link href="/practice" className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
-          Practice {names[report.recommended]}
-        </Link>
-      </div>
+      )}
 
-      <dl className="mt-6 grid grid-cols-3 gap-3">
-        {[
-          ["Skills mastered", `${mastered} / ${report.skills.length}`],
-          ["Problems tried", String(attempts)],
-          ["First-try accuracy", attempts ? pct(correct / attempts) : "—"],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-            <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-8 space-y-6">
-        {byLevel(report.skills).map((level, i) => (
-          <section key={i}>
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Level {i + 1}
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {level.map((s) => (
-                <div
-                  key={s.id}
-                  className={`rounded-lg border bg-white p-4 dark:bg-slate-900 ${
-                    s.id === report.recommended
-                      ? "border-sky-500 ring-2 ring-sky-500/30"
-                      : "border-slate-200 dark:border-slate-800"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-medium">{s.name}</h3>
-                    <StateChip state={skillState(s)} />
-                  </div>
-                  <p className="mt-2 text-2xl font-semibold tabular-nums">{pct(s.mastery)}</p>
-                  <div className="mt-2">
-                    <MasteryBar skill={s} threshold={report.threshold} />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    {s.attempts
-                      ? `${s.correct} of ${s.attempts} right on first try`
-                      : attempts
-                        ? "Not practiced yet · estimated from your other answers"
-                        : "Not practiced yet"}
-                  </p>
-                  {s.prerequisites.length > 0 && (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Needs: {s.prerequisites.map((p) => names[p]).join(", ")}
-                    </p>
-                  )}
-                  {s.id === report.recommended && (
-                    <p className="mt-2 text-xs font-medium text-sky-700 dark:text-sky-300">Recommended next</p>
-                  )}
+      <div className="mt-6 space-y-8">
+        {courses.map((c) => {
+          const s = c.summary;
+          const names = Object.fromEntries(c.mastery.skills.map((k) => [k.id, k.name]));
+          return (
+            <section key={c.id} className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">{c.name}</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{c.grades}</p>
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
+                <div className="flex flex-wrap gap-2">
+                  <Link href={`/courses/${c.id}`} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                    Concepts
+                  </Link>
+                  <Link href={`/courses/${c.id}/practice`} className="rounded-md bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700">
+                    Practice {names[c.mastery.recommended]}
+                  </Link>
+                </div>
+              </div>
+
+              <dl className="mt-4 grid grid-cols-3 gap-3">
+                {[
+                  ["Skills mastered", `${s.mastered} / ${s.skills}`],
+                  ["Problems tried", String(s.attempts)],
+                  ["First-try accuracy", s.attempts ? pct(s.correct / s.attempts) : "—"],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-md bg-slate-50 p-3 dark:bg-slate-950">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+                    <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm font-medium">Skill breakdown</summary>
+                <div className="mt-4 space-y-5">
+                  {byLevel(c.mastery.skills).map((level, i) => (
+                    <div key={i}>
+                      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Level {i + 1}</h3>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {level.map((k) => (
+                          <div
+                            key={k.id}
+                            className={`rounded-md border p-3 ${
+                              k.id === c.mastery.recommended ? "border-sky-500 ring-2 ring-sky-500/30" : "border-slate-200 dark:border-slate-800"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-medium">{k.name}</h4>
+                              <StateChip state={skillState(k)} />
+                            </div>
+                            <p className="mt-1 text-xl font-semibold tabular-nums">{pct(k.mastery)}</p>
+                            <div className="mt-1">
+                              <MasteryBar skill={k} threshold={c.mastery.threshold} />
+                            </div>
+                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                              {k.attempts
+                                ? `${k.correct} of ${k.attempts} right on first try`
+                                : s.attempts
+                                  ? "Not practiced yet · estimated from your other answers"
+                                  : "Not practiced yet"}
+                            </p>
+                            {k.prerequisites.length > 0 && (
+                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                Needs: {k.prerequisites.map((p) => names[p]).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

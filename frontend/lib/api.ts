@@ -26,6 +26,7 @@ export type SkillMastery = {
 
 export type MasteryReport = {
   user_id: string;
+  course: string | null; // set when restricted to one course
   threshold: number;
   recommended: string;
   skills: SkillMastery[]; // in prerequisite (topological) order
@@ -46,6 +47,27 @@ export type Hint = {
   next_step: string; // "" when writing the step would reveal the answer
   verified: boolean; // passed the SymPy check
   source: "llm" | "fallback";
+};
+
+export type ConceptLesson = {
+  summary: string;
+  steps: string[];
+  example: string[]; // worked example: first line is the problem, last line the answer
+  mistake: string;
+};
+
+export type Course = {
+  id: string;
+  name: string;
+  grades: string;
+  description: string;
+  units: { id: string; name: string; skills: { id: string; name: string; concept?: ConceptLesson }[] }[];
+};
+
+export type JoinedCourse = Course & {
+  joined_at: string;
+  summary: { skills: number; mastered: number; average_mastery: number; attempts: number; correct: number };
+  mastery: MasteryReport;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -74,15 +96,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const user = (id: string) => `/users/${encodeURIComponent(id)}`;
 
+/** "?a=1&b=2" from the defined values, or "" if none. */
+function query(params: Record<string, string | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
 export const api = {
-  mastery: (userId: string) => request<MasteryReport>(`${user(userId)}/mastery`),
+  courses: () => request<Course[]>("/courses"),
+  course: (courseId: string) => request<Course>(`/courses/${encodeURIComponent(courseId)}`),
+  myCourses: (userId: string) => request<JoinedCourse[]>(`${user(userId)}/courses`),
+  join: (userId: string, courseId: string) =>
+    request<{ joined: string }>(`${user(userId)}/courses/${encodeURIComponent(courseId)}`, { method: "POST" }),
 
-  // Without `skill`, the backend picks the recommended skill.
-  nextProblem: (userId: string, skill?: string) =>
-    request<Problem>(`${user(userId)}/next${skill ? `?skill=${encodeURIComponent(skill)}` : ""}`),
+  mastery: (userId: string, course?: string) => request<MasteryReport>(`${user(userId)}/mastery${query({ course })}`),
 
-  submit: (userId: string, problemId: string, answer: string) =>
-    request<AttemptResult>(`${user(userId)}/attempts`, {
+  // Without `skill`, the backend picks the recommended skill (within `course` if given).
+  nextProblem: (userId: string, skill?: string, course?: string) =>
+    request<Problem>(`${user(userId)}/next${query({ skill, course })}`),
+
+  submit: (userId: string, problemId: string, answer: string, course?: string) =>
+    request<AttemptResult>(`${user(userId)}/attempts${query({ course })}`, {
       method: "POST",
       body: JSON.stringify({ problem_id: problemId, answer }),
     }),
