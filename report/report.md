@@ -339,7 +339,11 @@ answer" step.
 1. **Approximate skill mapping.** Tutor topics are mapped onto ASSISTments skills by hand.
    Several topics share one ASSISTments skill, so their mastery estimates move together.
 2. **Hand-set BKT parameters** for 7 topics with no training data.
-3. **Verification covers math, not language.** Misleading wording can pass.
+3. **Verification is reliable, but not a proof of correctness.** SymPy computes exactly (rational
+   arithmetic, not floating point), and for the problem types used here (polynomials, linear and
+   quadratic equations, inequalities) equivalence is decidable by expanding both sides. But like any
+   software it can have bugs, and it checks math, not language, so misleading wording can pass. The
+   errors found in our experiments were all in our own checking rules, not in SymPy's arithmetic.
 4. **No learning-outcome evaluation.** Experiments measure prediction accuracy and output
    safety, not whether students learn more; a user study was out of scope.
 5. **Small LLM experiments** (127 hints and 40 tutor requests) and a single-annotator
