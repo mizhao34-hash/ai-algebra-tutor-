@@ -72,10 +72,8 @@ LLMs make natural-language explanations cheap, but they introduce two risks for 
 
 ## 2. Background and related work
 
-> All references were checked online on 2026-11-14 (DBLP, publisher and proceedings pages).
-> **TODO before submitting: read at least the abstract, results and conclusion of Pardos &
-> Bhandari (2024), Macina et al. (2023), Bastani et al. (2025) and Gao et al. (2023), and confirm
-> the sentences citing them say what the papers say.** Wang et al. (2024) is optional.
+> All references were checked online on 2026-11-14 (DBLP, publisher and proceedings pages)
+> and read by the author.
 
 - **Bayesian Knowledge Tracing (BKT)** models each skill as a hidden binary state
   (learned / not learned) with four parameters: prior, learn, guess, slip (Corbett &
@@ -96,7 +94,7 @@ LLMs make natural-language explanations cheap, but they introduce two risks for 
   feedback or revealing solutions. Bastani et al. (2025) showed in a field experiment that
   answer-giving AI can harm learning, while a tutor with guardrails largely avoids this.
   Wang et al. (2024) improve LLM responses to student math mistakes by modelling expert
-  remediation decisions. *(Optional; include only if you use it.)*
+  remediation decisions.
 - **Tools for LLM math.** Program-aided language models (PAL; Gao et al., 2023) have the LLM
   write a program and let an interpreter compute the result, improving math accuracy.
 - **How this project differs.** These approaches improve the *likelihood* that an LLM is correct
@@ -370,7 +368,7 @@ you made (course platform, AI tutor), and why.
 - Pardos, Z. A., & Bhandari, S. (2024). ChatGPT-generated help produces learning gains equivalent to human tutor-authored help on mathematics skills. *PLOS ONE, 19*, e0304013.
 - Pandey, S., & Karypis, G. (2019). A self-attentive model for knowledge tracing. *Proceedings of the 12th International Conference on Educational Data Mining (EDM 2019)*, 384–389.
 - Piech, C., Bassen, J., Huang, J., Ganguli, S., Sahami, M., Guibas, L., & Sohl-Dickstein, J. (2015). Deep knowledge tracing. *Advances in Neural Information Processing Systems 28 (NIPS 2015)*, 505–513.
-- *(Optional)* Wang, R. E., Zhang, Q., Robinson, C., Loeb, S., & Demszky, D. (2024). Bridging the novice-expert gap via models of decision-making: A case study on remediating math mistakes. *Proceedings of NAACL 2024*, 2174–2199.
+- Wang, R. E., Zhang, Q., Robinson, C., Loeb, S., & Demszky, D. (2024). Bridging the novice-expert gap via models of decision-making: A case study on remediating math mistakes. *Proceedings of NAACL 2024*, 2174–2199.
 
 ---
 
