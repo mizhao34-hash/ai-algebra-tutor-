@@ -12,6 +12,9 @@ export type Theme = {
   border: string;   // accent border
   bar: string;      // progress bar fill
   ring: string;     // focus / highlight ring
+  gradient: string; // hero banners: a three-color gradient
+  icon: string;     // small icon tiles
+  symbols: string[]; // decorative math symbols for this course's banners
 };
 
 const THEMES: Record<string, Theme> = {
@@ -23,6 +26,9 @@ const THEMES: Record<string, Theme> = {
     border: "border-teal-500",
     bar: "bg-teal-500",
     ring: "ring-teal-500/30",
+    gradient: "bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-600",
+    icon: "bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-200",
+    symbols: ["−7", "3²", "√49", "×", "÷", "|−4|"],
   },
   algebra_1: {
     name: "indigo",
@@ -32,6 +38,9 @@ const THEMES: Record<string, Theme> = {
     border: "border-indigo-500",
     bar: "bg-indigo-500",
     ring: "ring-indigo-500/30",
+    gradient: "bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600",
+    icon: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-200",
+    symbols: ["x", "=", "3x+5", "≤", "÷2", "y"],
   },
   algebra_2: {
     name: "rose",
@@ -41,6 +50,9 @@ const THEMES: Record<string, Theme> = {
     border: "border-rose-500",
     bar: "bg-rose-500",
     ring: "ring-rose-500/30",
+    gradient: "bg-gradient-to-br from-rose-500 via-pink-500 to-orange-500",
+    icon: "bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-200",
+    symbols: ["x²", "±", "√", "(x+2)", "0", "π"],
   },
 };
 
@@ -52,6 +64,9 @@ const DEFAULT_THEME: Theme = {
   border: "border-sky-500",
   bar: "bg-sky-500",
   ring: "ring-sky-500/30",
+  gradient: "bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-600",
+  icon: "bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-200",
+  symbols: ["x²", "√", "≤", "π", "∑", "±"],
 };
 
 export function theme(courseId?: string): Theme {
@@ -81,4 +96,5 @@ export const btn = {
     "disabled:opacity-50 dark:text-slate-400 dark:hover:text-white",
 };
 
-export const card = "rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900";
+export const card =
+  "rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90";

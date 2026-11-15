@@ -14,13 +14,13 @@ export function NavBar() {
     ...COURSE_TABS.map((c) => ({ href: `/courses/${c.id}`, label: c.name, active: theme(c.id).soft })),
   ];
   return (
-    <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-1 gap-y-2 px-4 py-2">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/75 backdrop-blur-md dark:border-slate-800/70 dark:bg-slate-900/75">
+      <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-1 gap-y-2 px-4 py-2.5">
         <Link href="/" className="mr-4 flex items-center gap-2 font-bold">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 font-mono text-sm text-white dark:bg-white dark:text-slate-900">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-rose-500 font-mono text-sm text-white shadow-md shadow-violet-500/30">
             x²
           </span>
-          Algebra Tutor
+          <span className="text-lg tracking-tight">Algebra Tutor</span>
         </Link>
         {tabs.map((t) => {
           const active = pathname === t.href || pathname.startsWith(t.href + "/");

@@ -204,23 +204,21 @@ function Practice({ initialSkill, unit }: { initialSkill: string; unit?: string 
         )}
 
         {problem && (
-          <div className={card}>
-            {/* Problem */}
-            <div className="border-b border-slate-200 p-6 dark:border-slate-800">
+          <div className="space-y-4">
+            {/* Problem, on a chalkboard */}
+            <div className="chalkboard relative overflow-hidden rounded-3xl px-6 pb-8 pt-5 text-white shadow-lg">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`text-sm font-semibold ${t.text}`}>{problem.skill_name}</span>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${t.gradient}`}>{problem.skill_name}</span>
                 {isRecommended && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    Recommended for you
-                  </span>
+                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/90">★ Recommended for you</span>
                 )}
               </div>
-              <p className="mt-4 text-slate-700 dark:text-slate-200">{problem.prompt}</p>
-              <p className="mt-3 rounded-lg bg-slate-50 px-4 py-5 text-center font-mono text-3xl tracking-wide break-words dark:bg-slate-950">
+              <p className="mt-6 text-center text-sm font-semibold uppercase tracking-[0.2em] text-white/60">{problem.prompt}</p>
+              <p className="mt-3 break-words text-center font-mono text-4xl font-semibold tracking-wide sm:text-5xl">
                 {pretty(problem.expression)}
               </p>
               {isRecommended && (
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-6 text-center text-xs text-white/55">
                   Chosen because it&apos;s your lowest-mastery topic in this {report?.unit ? "unit" : "course"} whose
                   prerequisites you&apos;ve mastered.
                 </p>
@@ -228,7 +226,7 @@ function Practice({ initialSkill, unit }: { initialSkill: string; unit?: string 
             </div>
 
             {/* Answer */}
-            <div className="p-6">
+            <div className={`${card} p-6`}>
               <form onSubmit={submit}>
                 <label htmlFor="answer" className="text-sm font-semibold">
                   Your answer
@@ -314,14 +312,16 @@ function Practice({ initialSkill, unit }: { initialSkill: string; unit?: string 
         )}
       </section>
 
-      <aside className={`${card} h-fit p-4`}>
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-semibold">Your mastery</h2>
-          <Link href={`/courses/${courseId}`} className={btn.subtle}>
-            Review lesson
+      <aside className={`${card} h-fit overflow-hidden lg:sticky lg:top-20`}>
+        <div className={`flex items-center justify-between px-4 py-3 text-white ${t.gradient}`}>
+          <h2 className="font-bold">Your mastery</h2>
+          <Link href={`/courses/${courseId}`} className="text-xs font-semibold text-white/90 hover:text-white">
+            Review lesson →
           </Link>
         </div>
-        {report && <MasteryList skills={report.skills} threshold={report.threshold} recommended={report.recommended} />}
+        <div className="p-4">
+          {report && <MasteryList skills={report.skills} threshold={report.threshold} recommended={report.recommended} />}
+        </div>
       </aside>
     </div>
   );
