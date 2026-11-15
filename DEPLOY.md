@@ -2,6 +2,12 @@
 
 Backend: Docker on Render (`render.yaml`, `backend/Dockerfile`). Frontend: Vercel.
 
+Live (deployed 2026-11-14):
+- Site: https://ai-algebra-tutor-pi.vercel.app
+- API: https://algebra-tutor-api.onrender.com (`/health`, `/docs`)
+- Repo: github.com/mizhao34-hash/ai-algebra-tutor- (private). Pushing to `main` redeploys both.
+- Before a demo, open `/health` ~1 min early: the free Render service sleeps when idle.
+
 ## 1. Push the repo to GitHub
 Create an empty **private** repo on github.com, then:
 ```

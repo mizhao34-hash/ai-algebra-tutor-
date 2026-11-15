@@ -135,6 +135,12 @@ export default function Practice() {
           </div>
         )}
 
+        {!problem && !error && (
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+            Loading your next problem… If the server was idle, it can take up to a minute to wake up.
+          </div>
+        )}
+
         {problem && (
           <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{problem.skill_name}</p>

@@ -43,7 +43,8 @@ export default function Dashboard() {
         {error}
       </div>
     );
-  if (!report) return <p className="text-slate-500">Loading…</p>;
+  if (!report)
+    return <p className="text-slate-500">Loading… If the server was idle, it can take up to a minute to wake up.</p>;
 
   const names = Object.fromEntries(report.skills.map((s) => [s.id, s.name]));
   const mastered = report.skills.filter((s) => s.mastered).length;
