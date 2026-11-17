@@ -2,10 +2,6 @@
 
 **MSCS Capstone Report** · Mingqi Zhao (mizhao34@g.ucla.edu) · Advisor: Bolei Zhou (bolei@cs.ucla.edu) · November 14, 2026
 
-> Draft written from the repository on 2026-11-14. Every number below comes from
-> `experiments/results.md` or `data/processed/stats.json`. Sections marked **TODO**
-> need your input. Rewrite the text in your own words before submitting.
-
 ---
 
 ## Abstract
@@ -148,7 +144,11 @@ flowchart LR
 | LLM | Claude (Opus 5.5 by default) | Hints and tutor explanations, as structured JSON |
 | Deployment | Vercel, Docker on Render | Public web app |
 
-TODO: add 3–4 screenshots (lesson page, practice page with hint, tutor walkthrough, dashboard).
+| Lesson | Practice |
+|---|---|
+| ![Lesson](../docs/screenshots/lesson.png) | ![Practice](../docs/screenshots/practice.png) |
+| **AI tutor** | **Dashboard** |
+| ![Tutor](../docs/screenshots/tutor.png) | ![Dashboard](../docs/screenshots/dashboard.png) |
 
 ### 3.2 Curriculum and skill graph
 The platform has three courses, 8 units and 18 topics (skills), each with prerequisites:
@@ -272,7 +272,7 @@ Test predictions: n = 35,789. **DKT improves test AUC by 0.043 over BKT**, consi
 DKT's ability to share information across skills.
 
 ### 5.2 Experiment 2: Verified hints (RQ2)
-**Setup.** 127 hint requests: 10 problems per skill for the 9 linear-equation skills, plus
+**Setup.** 127 hint requests: 10 problems per skill for the 9 skills of the original linear-equations unit, plus
 the real "last step" (cx = d) for equation problems, where leaking is most tempting. The
 design is **paired**: the LLM's first proposal is exactly what an unverified system would
 show, and the verified system's final output is what students see. Both are scored on the
@@ -370,7 +370,7 @@ The hardest part was not any single model but the joints between components. DKT
 
 ## References
 
-> Checked online on 2026-11-14. TODO: format in your program's required citation style.
+> All references were checked online on 2026-11-14.
 
 - Bastani, H., Bastani, O., Sungu, A., Ge, H., Kabakcı, Ö., & Mariman, R. (2025). Generative AI without guardrails can harm learning: Evidence from high school mathematics. *Proceedings of the National Academy of Sciences, 122*, e2422633122.
 - Badrinath, A., Wang, F., & Pardos, Z. (2021). pyBKT: An accessible library of Bayesian knowledge tracing models. *Proceedings of the 14th International Conference on Educational Data Mining (EDM 2021).* arXiv:2105.00385.
